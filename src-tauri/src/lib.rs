@@ -1137,6 +1137,20 @@ pub fn run(cli_args: CliArgs) {
                 let tm = devices_app_handle.state::<Arc<TranscriptionManager>>();
                 crate::managers::transcription::report_compute_devices(&tm);
                 let _ = crate::managers::transcription::get_available_accelerators(&tm);
+
+                let rm = devices_app_handle.state::<Arc<AudioRecordingManager>>();
+                if let Err(err) = rm.preload_vad() {
+                    log::debug!("Startup VAD pre-load skipped: {err}");
+                }
+                let startup_settings = get_settings(&devices_app_handle);
+                if !startup_settings.selected_model.is_empty()
+                    && devices_app_handle
+                        .state::<Arc<ModelManager>>()
+                        .get_model_path(&startup_settings.selected_model)
+                        .is_ok()
+                {
+                    tm.initiate_model_load(false);
+                }
             });
 
             // Hide tray icon if --no-tray was passed

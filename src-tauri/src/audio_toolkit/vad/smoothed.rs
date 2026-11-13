@@ -20,6 +20,7 @@ pub struct SmoothedVad {
     hangover_counter: usize,
     onset_counter: usize,
     in_speech: bool,
+    saw_speech: bool,
 
     temp_out: Vec<f32>,
 }
@@ -40,6 +41,7 @@ impl SmoothedVad {
             hangover_counter: 0,
             onset_counter: 0,
             in_speech: false,
+            saw_speech: false,
             temp_out: Vec::new(),
         }
     }
@@ -76,6 +78,7 @@ impl VoiceActivityDetector for SmoothedVad {
                 if self.onset_counter >= self.onset_frames {
                     // We have enough consecutive voice frames to trigger speech
                     self.in_speech = true;
+                    self.saw_speech = true;
                     self.hangover_counter = self.hangover_frames;
                     self.onset_counter = 0; // Reset for next time
 
@@ -94,6 +97,7 @@ impl VoiceActivityDetector for SmoothedVad {
 
             // Ongoing Speech
             (true, true) => {
+                self.saw_speech = true;
                 self.hangover_counter = self.hangover_frames;
                 self.mark_last_emitted();
                 Ok(VadFrame::Speech(frame))
@@ -158,7 +162,7 @@ impl VoiceActivityDetector for SmoothedVad {
             .frame_buffer
             .iter()
             .any(|frame| !frame.emitted && frame.voiced);
-        if !has_unemitted_voiced {
+        if !has_unemitted_voiced && !self.saw_speech {
             return Vec::new();
         }
         let mut rescued = Vec::new();
@@ -176,6 +180,7 @@ impl VoiceActivityDetector for SmoothedVad {
         self.hangover_counter = 0;
         self.onset_counter = 0;
         self.in_speech = false;
+        self.saw_speech = false;
         self.temp_out.clear();
     }
 }

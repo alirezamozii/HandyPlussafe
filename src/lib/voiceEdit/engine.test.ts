@@ -97,4 +97,28 @@ describe("Voice Edit & Replacement Engine (Jarvis Mode)", () => {
     assert.equal(res.matched, false);
     assert.equal(res.updatedText, text);
   });
+
+  it("respects word boundaries for target and range edits", () => {
+    const base = "The plan is clear and this island is ready.";
+    const noPartialDelete = applyVoiceEdit(base, "remove an");
+    assert.equal(noPartialDelete.matched, false);
+    assert.equal(noPartialDelete.updatedText, base);
+
+    const exactReplace = applyVoiceEdit(base, "replace is with was");
+    assert.equal(exactReplace.matched, true);
+    assert.equal(
+      exactReplace.updatedText,
+      "The plan is clear and this island was ready.",
+    );
+
+    const rangeEdit = applyVoiceEdit(
+      "Review this plan is good until it ships.",
+      "replace from plan to good with architecture holds",
+    );
+    assert.equal(rangeEdit.matched, true);
+    assert.equal(
+      rangeEdit.updatedText,
+      "Review this architecture holds until it ships.",
+    );
+  });
 });

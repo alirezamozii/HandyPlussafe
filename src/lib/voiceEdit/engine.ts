@@ -129,17 +129,41 @@ function findLastMatchSpan(
   }
   if (lastMatch) return lastMatch;
 
-  // Fallback: case-insensitive lastIndexOf
-  const idx = haystack.toLowerCase().lastIndexOf(cleanNeedle.toLowerCase());
-  if (idx !== -1) {
-    return { start: idx, end: idx + cleanNeedle.length };
+  // Fallback substring search only when punctuation/symbols don't match regex \b
+  const lowerHay = haystack.toLowerCase();
+  const lowerNeedle = cleanNeedle.toLowerCase();
+  let fromIndex = lowerHay.length;
+  while (fromIndex >= 0) {
+    const idx = lowerHay.lastIndexOf(lowerNeedle, fromIndex);
+    if (idx === -1) break;
+    const end = idx + lowerNeedle.length;
+    if (isWordBoundaryMatch(haystack, idx, end, cleanNeedle)) {
+      return { start: idx, end };
+    }
+    if (idx === 0) break;
+    fromIndex = idx - 1;
   }
   return null;
 }
 
+function isWordBoundaryMatch(
+  haystack: string,
+  start: number,
+  end: number,
+  needle: string,
+): boolean {
+  const startsWordChar = /[a-z0-9]/i.test(needle[0] ?? "");
+  const endsWordChar = /[a-z0-9]/i.test(needle[needle.length - 1] ?? "");
+  const leftOk =
+    !startsWordChar || start === 0 || !/[a-z0-9]/i.test(haystack[start - 1]);
+  const rightOk =
+    !endsWordChar || end >= haystack.length || !/[a-z0-9]/i.test(haystack[end]);
+  return leftOk && rightOk;
+}
+
 /**
  * Finds an inclusive range `[startWord ... endWord]` in `haystack`.
- * Searches for `startWord` and a subsequent `endWord`.
+ * Searches for `startWord` and a subsequent `endWord` with word boundaries.
  */
 function findRangeSpan(
   haystack: string,
@@ -154,7 +178,7 @@ function findRangeSpan(
   const lowerStart = cleanStart.toLowerCase();
   const lowerEnd = cleanEnd.toLowerCase();
 
-  // Prefer the most recent range that has both start and end in order
+  // Prefer the most recent word-boundary-valid range that has both start and end in order
   let bestSpan: { start: number; end: number } | null = null;
   let searchPos = 0;
 
@@ -163,11 +187,18 @@ function findRangeSpan(
     if (sIdx === -1) break;
 
     const afterStart = sIdx + lowerStart.length;
-    const eIdx = lowerHay.indexOf(lowerEnd, afterStart);
-    if (eIdx !== -1) {
-      let endPos = eIdx + lowerEnd.length;
-      // If the user's replacement does not end with punctuation and the original had trailing punctuation attached, keep punctuation intact
-      bestSpan = { start: sIdx, end: endPos };
+    if (isWordBoundaryMatch(haystack, sIdx, afterStart, cleanStart)) {
+      let endSearch = afterStart;
+      while (endSearch < lowerHay.length) {
+        const eIdx = lowerHay.indexOf(lowerEnd, endSearch);
+        if (eIdx === -1) break;
+        const endPos = eIdx + lowerEnd.length;
+        if (isWordBoundaryMatch(haystack, eIdx, endPos, cleanEnd)) {
+          bestSpan = { start: sIdx, end: endPos };
+          break;
+        }
+        endSearch = eIdx + 1;
+      }
     }
     searchPos = sIdx + 1;
   }

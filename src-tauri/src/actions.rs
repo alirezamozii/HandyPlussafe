@@ -474,6 +474,7 @@ pub(crate) struct ProcessedTranscription {
     pub post_process_prompt: Option<String>,
     /// `final_text` is the bare transcript because post-processing failed.
     pub post_process_failed: bool,
+    pub voice_edit_applied: bool,
 }
 
 pub(crate) async fn process_transcription_output(
@@ -486,6 +487,7 @@ pub(crate) async fn process_transcription_output(
     let mut post_processed_text: Option<String> = None;
     let mut post_process_prompt: Option<String> = None;
     let mut post_process_failed = false;
+    let mut voice_edit_applied = false;
 
     if post_process {
         // A reply that's blank once cleaned is no better than none.
@@ -538,6 +540,7 @@ pub(crate) async fn process_transcription_output(
                 edit_outcome.kind, edit_outcome.summary
             );
             final_text = edit_outcome.updated_text;
+            voice_edit_applied = true;
         } else if !final_text.trim().is_empty() {
             crate::voice_edit::record_dictated_text(&final_text);
         }
@@ -548,6 +551,7 @@ pub(crate) async fn process_transcription_output(
         post_processed_text,
         post_process_prompt,
         post_process_failed,
+        voice_edit_applied,
     }
 }
 
@@ -634,26 +638,6 @@ impl ShortcutAction for TranscribeAction {
         }
         let plan_elapsed = plan_started.elapsed();
 
-        // Sizing the overlay follows the same advertised capability. A model that
-        // doesn't stream (or whose capability is not known yet) gets the compact
-        // pill instead of an oversized transparent live window.
-        let overlay_started = Instant::now();
-        match settings.overlay_style {
-            OverlayStyle::Live if model_supports_streaming => utils::show_streaming_overlay(app),
-            OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(app),
-            OverlayStyle::None => {} // show_overlay_state no-ops on None anyway
-        }
-        // Everything above runs before capture can begin, so each span here is
-        // added keypress->capture latency.
-        debug!(
-            "start-path pre-recording steps: model_kickoff={:?} tray={:?} settings+stream_plan={:?} overlay={:?}",
-            kickoff_elapsed,
-            tray_elapsed,
-            plan_elapsed,
-            overlay_started.elapsed()
-        );
-        debug!("Microphone mode - always_on: {}", is_always_on);
-
         // When audio feedback is disabled, apply system mute immediately before
         // opening/starting microphone capture so the first words of playing media
         // (e.g. YouTube) are never recorded (#642).
@@ -666,54 +650,82 @@ impl ShortcutAction for TranscribeAction {
         match rm.try_start_recording(&binding_id, vad_policy) {
             Ok(readiness) => {
                 debug!(
-                    "Recording request accepted in {:?}; waiting for first microphone samples",
+                    "Recording request accepted in {:?}; waiting briefly for first microphone samples before showing overlay",
                     recording_start_time.elapsed()
                 );
                 let generation = readiness.generation();
+                let wait_outcome = readiness.wait_timeout(Duration::from_millis(1200));
+
+                // Show the overlay only once recording has started (and for normal
+                // devices, after the first audio samples are already flowing so
+                // the user isn't cut off speaking while the hardware spins up).
+                let overlay_started = Instant::now();
+                match settings.overlay_style {
+                    OverlayStyle::Live if model_supports_streaming => {
+                        utils::show_streaming_overlay(app)
+                    }
+                    OverlayStyle::Live | OverlayStyle::Minimal => show_recording_overlay(app),
+                    OverlayStyle::None => {}
+                }
+                debug!(
+                    "start-path pre-recording steps: model_kickoff={:?} tray={:?} settings+stream_plan={:?} overlay={:?}",
+                    kickoff_elapsed,
+                    tray_elapsed,
+                    plan_elapsed,
+                    overlay_started.elapsed()
+                );
+                debug!("Microphone mode - always_on: {}", is_always_on);
+
                 let app_clone = app.clone();
                 let rm_clone = Arc::clone(&rm);
                 let audio_feedback_enabled = settings.audio_feedback;
-                std::thread::spawn(move || {
-                    if !readiness.wait() {
-                        debug!("Microphone readiness wait ended without receiving samples");
-                        return;
-                    }
-
-                    // Development-only preview hook for evaluating the brief
-                    // arming animation on hardware that normally starts too fast
-                    // to make it visible.
-                    #[cfg(debug_assertions)]
-                    if let Ok(delay_ms) = std::env::var("HANDY_DEBUG_MIC_READY_DELAY_MS")
-                        .unwrap_or_default()
-                        .parse::<u64>()
-                    {
-                        let delay_ms = delay_ms.min(10_000);
-                        if delay_ms > 0 {
-                            debug!("Delaying microphone-ready cue by {delay_ms}ms for UI preview");
-                            std::thread::sleep(Duration::from_millis(delay_ms));
-                        }
-                    }
-
-                    if !rm_clone.is_recording_readiness_current(generation) {
-                        debug!("Microphone became ready for an inactive recording");
-                        return;
-                    }
-
-                    debug!("Microphone is receiving samples; recording is ready");
-                    utils::emit_recording_ready(&app_clone);
-
-                    // The start chime is a readiness cue, so it must follow the
-                    // first real input callback rather than Stream::play() or a
-                    // fixed delay. When audio feedback is enabled, mute after the
-                    // chime finishes playing so the chime itself is audible.
-                    if audio_feedback_enabled && rm_clone.is_recording_readiness_current(generation)
-                    {
-                        play_feedback_sound_blocking(&app_clone, SoundType::Start);
+                match wait_outcome {
+                    crate::managers::audio::ReadinessWait::Ready => {
                         if rm_clone.is_recording_readiness_current(generation) {
-                            rm_clone.apply_mute();
+                            debug!(
+                                "Microphone is already receiving samples; emitting ready immediately"
+                            );
+                            utils::emit_recording_ready(&app_clone);
+                            if audio_feedback_enabled {
+                                std::thread::spawn(move || {
+                                    if rm_clone.is_recording_readiness_current(generation) {
+                                        play_feedback_sound_blocking(&app_clone, SoundType::Start);
+                                        if rm_clone.is_recording_readiness_current(generation) {
+                                            rm_clone.apply_mute();
+                                        }
+                                    }
+                                });
+                            }
                         }
                     }
-                });
+                    crate::managers::audio::ReadinessWait::TimedOut(remaining) => {
+                        std::thread::spawn(move || {
+                            if !remaining.wait() {
+                                debug!("Microphone readiness wait ended without receiving samples");
+                                return;
+                            }
+                            if !rm_clone.is_recording_readiness_current(generation) {
+                                debug!("Microphone became ready for an inactive recording");
+                                return;
+                            }
+
+                            debug!("Microphone is receiving samples; recording is ready");
+                            utils::emit_recording_ready(&app_clone);
+
+                            if audio_feedback_enabled
+                                && rm_clone.is_recording_readiness_current(generation)
+                            {
+                                play_feedback_sound_blocking(&app_clone, SoundType::Start);
+                                if rm_clone.is_recording_readiness_current(generation) {
+                                    rm_clone.apply_mute();
+                                }
+                            }
+                        });
+                    }
+                    crate::managers::audio::ReadinessWait::Disconnected => {
+                        debug!("Microphone readiness ended before delivering samples");
+                    }
+                }
             }
             Err(e) => {
                 if !settings.audio_feedback {
@@ -937,12 +949,13 @@ impl ShortcutAction for TranscribeAction {
                                 return;
                             };
 
-                            if final_text.is_empty() {
+                            if final_text.is_empty() && !processed.voice_edit_applied {
                                 finish_without_text(&ah, input_silent, sample_count, stop_time);
                             } else {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let post_process_failed = processed.post_process_failed;
+                                let voice_edit_applied = processed.voice_edit_applied;
                                 let rm_for_paste = Arc::clone(&rm);
                                 // Taken before the paste thread exists, and so
                                 // before the next session can start.
@@ -965,8 +978,11 @@ impl ShortcutAction for TranscribeAction {
                                         // UI while this paste ran.
                                         let owns_ui =
                                             || RECORDING_SESSION.load(Ordering::SeqCst) == session;
-                                        let (outcome, notice) =
-                                            match utils::paste(final_text, ah_clone.clone()) {
+                                        let (outcome, notice) = match utils::paste_or_replace(
+                                            final_text,
+                                            voice_edit_applied,
+                                            ah_clone.clone(),
+                                        ) {
                                                 Ok(()) => {
                                                     debug!(
                                                         "Text pasted successfully in {:?}",

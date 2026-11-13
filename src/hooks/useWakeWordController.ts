@@ -7,11 +7,6 @@ import {
   triggerWebSimulatedDictation,
 } from "@/lib/tauriWebFallback";
 import { BrowserWakeWordEngine } from "@/lib/wakeWord/browserEngine";
-import {
-  canTriggerWakeWord,
-  matchWakeWord,
-  type WakeWordMatchResult,
-} from "@/lib/wakeWord/matcher";
 import { useWakeWordStore } from "@/stores/wakeWordStore";
 
 export function useWakeWordController(active: boolean): void {
@@ -20,11 +15,9 @@ export function useWakeWordController(active: boolean): void {
   const wakeWords = settings?.wake_words ?? [];
   const language = settings?.selected_language || "en-US";
   const engineRef = useRef<BrowserWakeWordEngine | null>(null);
-  const lastNativeTriggerRef = useRef<number | null>(null);
   const resetTimerRef = useRef<number | null>(null);
 
   const setStatus = useWakeWordStore((state) => state.setStatus);
-  const setSimulator = useWakeWordStore((state) => state.setSimulator);
 
   useEffect(() => {
     const isWeb = isWebPreviewRuntime();
@@ -58,38 +51,6 @@ export function useWakeWordController(active: boolean): void {
       });
     }
   }, [enabled, wakeWords, language, setStatus]);
-
-  useEffect(() => {
-    const simulator = (phrase: string): WakeWordMatchResult => {
-      if (!enabled || wakeWords.length === 0) {
-        return { matched: false, wakeWord: null, trailingCommand: "" };
-      }
-
-      if (engineRef.current) {
-        return engineRef.current.processTranscript(phrase);
-      }
-
-      const result = matchWakeWord(phrase, wakeWords);
-      if (result.matched) {
-        const now = Date.now();
-        if (canTriggerWakeWord(lastNativeTriggerRef.current, now)) {
-          lastNativeTriggerRef.current = now;
-          setStatus("triggered", result.wakeWord ?? null);
-          if (isWebPreviewRuntime()) {
-            triggerWebSimulatedDictation({
-              wakeWord: result.wakeWord,
-              trailingText: result.trailingCommand,
-            });
-          }
-          return result;
-        }
-      }
-      return { matched: false, wakeWord: null, trailingCommand: "" };
-    };
-
-    setSimulator(simulator);
-    return () => setSimulator(null);
-  }, [enabled, wakeWords, setSimulator, setStatus]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

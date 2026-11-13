@@ -326,12 +326,15 @@ impl TranscriptionManager {
                         continue;
                     }
 
-                    // While recording or transcribing a file, keep the idle
-                    // timer fresh so the model is never unloaded mid-session.
+                    // While recording, transcribing a file, or listening for a
+                    // hands-free wake phrase, keep the model warm.
                     let is_recording = app_handle_cloned
                         .try_state::<Arc<AudioRecordingManager>>()
                         .is_some_and(|a| a.is_recording());
-                    if is_recording || manager_cloned.job_active() {
+                    let wake_word_active = settings.wake_word_enabled
+                        && !crate::wake_word::sanitize_wake_words(settings.wake_words.clone())
+                            .is_empty();
+                    if is_recording || manager_cloned.job_active() || wake_word_active {
                         manager_cloned.touch_activity();
                         continue;
                     }
@@ -508,7 +511,10 @@ impl TranscriptionManager {
             return;
         }
         let settings = get_settings(&self.app_handle);
-        if settings.model_unload_timeout == ModelUnloadTimeout::Immediately
+        let wake_word_active = settings.wake_word_enabled
+            && !crate::wake_word::sanitize_wake_words(settings.wake_words.clone()).is_empty();
+        if !wake_word_active
+            && settings.model_unload_timeout == ModelUnloadTimeout::Immediately
             && self.is_model_loaded()
         {
             info!("Immediately unloading model after {}", context);

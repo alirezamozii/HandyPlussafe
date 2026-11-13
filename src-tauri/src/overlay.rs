@@ -48,12 +48,12 @@ tauri_panel! {
 // width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
 // the window must fit the widest state plus a little slack. The longest notice
 // titles need nearly all of it.
-const OVERLAY_WIDTH: f64 = 266.0;
-const OVERLAY_HEIGHT: f64 = 50.0;
+const OVERLAY_WIDTH: f64 = 296.0;
+const OVERLAY_HEIGHT: f64 = 76.0;
 
-// Actual is 394x118, just a little extra
-const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
+// Live panel max footprint is 392x118 + 28px symmetric stage padding + stroke.
+const OVERLAY_STREAM_WIDTH: f64 = 432.0;
+const OVERLAY_STREAM_HEIGHT: f64 = 160.0;
 
 const NOTICE_STATE: &str = "notice";
 const LIVE_NOTICE_STATE: &str = "live_notice";
@@ -364,7 +364,7 @@ fn place_windows_overlay(
     logical_width: f64,
     logical_height: f64,
 ) -> Result<(), String> {
-    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE};
 
     let monitor = get_monitor_with_cursor(app_handle)
         .ok_or_else(|| "failed to determine the monitor containing the cursor".to_string())?;
@@ -385,12 +385,12 @@ fn place_windows_overlay(
     unsafe {
         SetWindowPos(
             hwnd,
-            None,
+            Some(HWND_TOPMOST),
             x,
             y,
             width,
             height,
-            SWP_NOACTIVATE | SWP_NOZORDER,
+            SWP_NOACTIVATE,
         )
         .map_err(|error| format!("failed to set overlay bounds: {error}"))?;
     }
@@ -490,7 +490,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .url(WebviewUrl::App("src/overlay/index.html".into()))
             .title("Recording")
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
-            .level(PanelLevel::Status)
+            .level(PanelLevel::ScreenSaver)
             .size(tauri::Size::Logical(tauri::LogicalSize {
                 width: OVERLAY_WIDTH,
                 height: OVERLAY_HEIGHT,
@@ -601,6 +601,8 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
 
             let show_started = std::time::Instant::now();
             let _ = overlay_window.show();
+            #[cfg(not(target_os = "macos"))]
+            let _ = overlay_window.set_always_on_top(true);
             let show_elapsed = show_started.elapsed();
 
             // On Windows, aggressively re-assert "topmost" in the native Z-order after showing
@@ -924,7 +926,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (3641, 2025, 399, 75)
+            (3618, 1986, 444, 114)
         );
         assert_eq!(
             windows_overlay_bounds(
@@ -936,7 +938,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
             ),
-            (3641, 6, 399, 75)
+            (3618, 6, 444, 114)
         );
     }
 
@@ -953,7 +955,7 @@ mod tests {
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (-1530, 1040, 500, 150)
+            (-1550, 990, 540, 200)
         );
     }
 
@@ -972,9 +974,9 @@ mod tests {
             OVERLAY_STREAM_HEIGHT,
             OverlayPosition::Bottom,
         );
-        // 400x120 logical at 1.25 DPI x 1.1 text, still centered horizontally.
-        assert_eq!((x, y, width, height), (-1555, 1025, 550, 165));
-        // Bottom edge unchanged from the 1.0 case above (1040 + 150).
+        // 432x160 logical at 1.25 DPI x 1.1 text, still centered horizontally.
+        assert_eq!((x, y, width, height), (-1577, 970, 594, 220));
+        // Bottom edge unchanged from the 1.0 case above (990 + 200).
         assert_eq!(y + height, 1190);
 
         let (_, top_y, _, _) = windows_overlay_bounds(

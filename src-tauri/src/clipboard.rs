@@ -19,6 +19,11 @@ use crate::utils::{is_gnome_wayland, is_kde_wayland, is_wayland};
 /// the user's clipboard. Only taken by `paste`, which never runs on the main thread.
 static PASTE_LOCK: Mutex<()> = Mutex::new(());
 
+/// Character count of the most recently pasted dictation (when `auto_submit`
+/// did not consume it), so a subsequent voice-edit command can erase and replace
+/// that text in-place inside the target application.
+static LAST_PASTED_CHAR_LEN: Mutex<usize> = Mutex::new(0);
+
 /// Runs `f` with the shared Enigo on the main thread (macOS TIS APIs require it)
 /// and waits for the result. Runs inline if already on the main thread, so no deadlock.
 fn with_enigo<T: Send + 'static>(
@@ -851,20 +856,223 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
+#[cfg(target_os = "linux")]
+fn send_backspaces_via_wtype(count: usize) -> Result<(), String> {
+    let mut args = Vec::with_capacity(count * 2);
+    for _ in 0..count {
+        args.push("-k");
+        args.push("BackSpace");
+    }
+    let output = Command::new("wtype")
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to execute wtype: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("wtype failed: {}", stderr));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn send_backspaces_via_xdotool(count: usize) -> Result<(), String> {
+    let repeat = count.to_string();
+    let output = Command::new("xdotool")
+        .args(["key", "--clearmodifiers", "--delay", "2", "--repeat", &repeat, "BackSpace"])
+        .output()
+        .map_err(|e| format!("Failed to execute xdotool: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("xdotool failed: {}", stderr));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn send_backspaces_via_dotool(count: usize) -> Result<(), String> {
+    use std::io::Write;
+    use std::process::Stdio;
+    let script = "key backspace\n".repeat(count);
+    let mut child = Command::new("dotool")
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn dotool: {}", e))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(script.as_bytes())
+            .map_err(|e| format!("Failed to write to dotool stdin: {}", e))?;
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("Failed to wait for dotool: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("dotool failed: {}", stderr));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn send_backspaces_via_ydotool(count: usize) -> Result<(), String> {
+    let syntax = detect_ydotool_key_syntax();
+    let mut args: Vec<&str> = Vec::with_capacity(1 + count * 2);
+    args.push("key");
+    match syntax {
+        YdotoolKeySyntax::Symbolic => {
+            for _ in 0..count {
+                args.push("BackSpace");
+            }
+        }
+        YdotoolKeySyntax::RawKeycodes => {
+            for _ in 0..count {
+                args.push("14:1");
+                args.push("14:0");
+            }
+        }
+    }
+    let output = ydotool_command()
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to execute ydotool: {}", e))?;
+    if !output.status.success() {
+        return Err(ydotool_error(&output));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn try_send_backspaces_linux(count: usize, preferred_tool: TypingTool) -> bool {
+    if count == 0 {
+        return true;
+    }
+    type SendBackspacesFn = fn(usize) -> Result<(), String>;
+    let mut tools: Vec<(&str, SendBackspacesFn)> = Vec::new();
+    match preferred_tool {
+        TypingTool::Wtype if is_wtype_available() => {
+            tools.push(("wtype", send_backspaces_via_wtype));
+        }
+        TypingTool::Dotool if is_dotool_available() => {
+            tools.push(("dotool", send_backspaces_via_dotool));
+        }
+        TypingTool::Ydotool if is_ydotool_available() => {
+            tools.push(("ydotool", send_backspaces_via_ydotool));
+        }
+        TypingTool::Xdotool if is_xdotool_available() => {
+            tools.push(("xdotool", send_backspaces_via_xdotool));
+        }
+        TypingTool::Auto => {
+            if is_wayland() {
+                if !is_kde_wayland() && !is_gnome_wayland() && is_wtype_available() {
+                    tools.push(("wtype", send_backspaces_via_wtype));
+                }
+                if is_dotool_available() {
+                    tools.push(("dotool", send_backspaces_via_dotool));
+                }
+            } else if is_xdotool_available() {
+                tools.push(("xdotool", send_backspaces_via_xdotool));
+            }
+            if is_ydotool_available() {
+                tools.push(("ydotool", send_backspaces_via_ydotool));
+            }
+        }
+        _ => {}
+    }
+
+    for (name, send) in tools {
+        info!("Using {} to erase {} previous character(s)", name, count);
+        match send(count) {
+            Ok(()) => return true,
+            Err(e) => log::warn!("{} failed to send backspaces: {}", name, e),
+        }
+    }
+    false
+}
+
+fn backspace_previous_paste(
+    app_handle: &AppHandle,
+    count: usize,
+    #[cfg(target_os = "linux")] typing_tool: TypingTool,
+) -> Result<(), String> {
+    if count == 0 {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "linux")]
+    if try_send_backspaces_linux(count, typing_tool) {
+        return Ok(());
+    }
+
+    with_enigo(app_handle, move |enigo| input::send_backspaces(enigo, count))
+}
+
 /// Pastes `text` into the focused app. Call from a worker thread, never the main
 /// thread: it sleeps between steps (input injection hops via `with_enigo`).
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
+    paste_or_replace(text, false, app_handle)
+}
+
+/// Pastes `text` into the focused app, optionally erasing the previously pasted
+/// dictation first (via backspaces) so voice edits modify text in-place.
+pub fn paste_or_replace(
+    text: String,
+    replace_previous: bool,
+    app_handle: AppHandle,
+) -> Result<(), String> {
     let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
     let settings = get_settings(&app_handle);
     let paste_method = settings.paste_method;
     let paste_delay_ms = settings.paste_delay_ms;
     let paste_delay_after_ms = settings.paste_delay_after_ms;
 
+    if paste_method == PasteMethod::None {
+        info!("PasteMethod::None selected - skipping paste action");
+        *LAST_PASTED_CHAR_LEN
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = 0;
+        return Ok(());
+    }
+
+    let prev_char_len = if replace_previous {
+        *LAST_PASTED_CHAR_LEN
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    } else {
+        0
+    };
+
+    if prev_char_len > 0 {
+        info!(
+            "Replacing previous dictation in-place: erasing {} character(s)",
+            prev_char_len
+        );
+        backspace_previous_paste(
+            &app_handle,
+            prev_char_len,
+            #[cfg(target_os = "linux")]
+            settings.typing_tool,
+        )?;
+        *LAST_PASTED_CHAR_LEN
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = 0;
+        std::thread::sleep(Duration::from_millis(35));
+    }
+
+    if replace_previous && text.is_empty() {
+        info!("Voice edit cleared previous dictation in-place");
+        return Ok(());
+    }
+
     // Append trailing space if setting is enabled
-    let text = if settings.append_trailing_space {
+    let text = if settings.append_trailing_space && !text.is_empty() {
         format!("{} ", text)
     } else {
         text
+    };
+    let written_char_len = text.chars().count();
+    let next_char_len = if should_send_auto_submit(settings.auto_submit, paste_method) {
+        0
+    } else {
+        written_char_len
     };
 
     info!(
@@ -874,9 +1082,7 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
 
     // Perform the paste operation
     match paste_method {
-        PasteMethod::None => {
-            info!("PasteMethod::None selected - skipping paste action");
-        }
+        PasteMethod::None => unreachable!(),
         PasteMethod::Direct => {
             paste_direct(
                 &text,
@@ -912,7 +1118,12 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
                     )
                 });
                 match reliable_result {
-                    Ok(()) => return Ok(()),
+                    Ok(()) => {
+                        *LAST_PASTED_CHAR_LEN
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner) = next_char_len;
+                        return Ok(());
+                    }
                     Err(e) => {
                         log::warn!("Reliable paste unavailable ({e}); falling back to legacy paste")
                     }
@@ -935,6 +1146,10 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
             paste_via_external_script(&text, script_path)?;
         }
     }
+
+    *LAST_PASTED_CHAR_LEN
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner) = next_char_len;
 
     if should_send_auto_submit(settings.auto_submit, paste_method) {
         std::thread::sleep(Duration::from_millis(50));

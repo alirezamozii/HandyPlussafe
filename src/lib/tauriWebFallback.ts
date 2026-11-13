@@ -46,6 +46,7 @@ type TauriInternalsWindow = Window & {
     unregisterListener: (event: string, eventId: number) => void;
   };
   __HANDY_WEB_PREVIEW__?: boolean;
+  __HANDY_PREVIEW_DISPATCH__?: (eventName: string, payload: unknown) => void;
 };
 
 export function isWebPreviewRuntime(): boolean {
@@ -847,6 +848,7 @@ export function installTauriWebFallback(): void {
   }
 
   w.__HANDY_WEB_PREVIEW__ = true;
+  w.__HANDY_PREVIEW_DISPATCH__ = dispatchEvent;
 
   w.__TAURI_OS_PLUGIN_INTERNALS__ = {
     eol: "\n",

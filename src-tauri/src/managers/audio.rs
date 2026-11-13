@@ -450,6 +450,13 @@ fn open_microphone_on_channel(
 
 /* ──────────────────────────────────────────────────────────────── */
 
+/// Outcome of bounded waiting for a recording session's first audio chunk.
+pub enum ReadinessWait {
+    Ready,
+    Disconnected,
+    TimedOut(RecordingReadiness),
+}
+
 /// One recording session's first-sample notification. Waiting on this never
 /// blocks the shortcut coordinator: callers hand it to a dedicated worker.
 pub struct RecordingReadiness {
@@ -460,6 +467,14 @@ pub struct RecordingReadiness {
 impl RecordingReadiness {
     pub fn wait(self) -> bool {
         self.receiver.recv().is_ok()
+    }
+
+    pub fn wait_timeout(self, timeout: Duration) -> ReadinessWait {
+        match self.receiver.recv_timeout(timeout) {
+            Ok(()) => ReadinessWait::Ready,
+            Err(mpsc::RecvTimeoutError::Timeout) => ReadinessWait::TimedOut(self),
+            Err(mpsc::RecvTimeoutError::Disconnected) => ReadinessWait::Disconnected,
+        }
     }
 
     pub fn generation(&self) -> u64 {
@@ -939,6 +954,18 @@ impl AudioRecordingManager {
 
         *open_flag = false;
         debug!("Microphone stream stopped");
+    }
+
+    /// Releases an idle open microphone stream (e.g. from always-on or lazy
+    /// close) so another input consumer such as the wake-word monitor can open
+    /// the device without exclusive-access conflicts.
+    pub fn release_idle_stream(&self) {
+        let state = self.state.lock().unwrap();
+        if !matches!(*state, RecordingState::Idle) {
+            return;
+        }
+        self.close_generation.fetch_add(1, Ordering::SeqCst);
+        self.stop_microphone_stream();
     }
 
     /// Closes a microphone, first discarding any recording on it (its

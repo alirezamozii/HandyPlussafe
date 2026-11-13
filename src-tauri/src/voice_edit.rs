@@ -171,6 +171,22 @@ fn match_case_if_capitalized(original: &str, replacement: &str) -> String {
     }
 }
 
+fn is_word_boundary_match(haystack: &str, start: usize, end: usize, needle: &str) -> bool {
+    let starts_alnum = needle.chars().next().is_some_and(char::is_alphanumeric);
+    let ends_alnum = needle.chars().last().is_some_and(char::is_alphanumeric);
+    let left_ok = !starts_alnum
+        || haystack[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !c.is_alphanumeric());
+    let right_ok = !ends_alnum
+        || haystack[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| !c.is_alphanumeric());
+    left_ok && right_ok
+}
+
 fn find_last_case_insensitive(haystack: &str, needle: &str) -> Option<(usize, usize)> {
     let clean_needle = strip_outer_punct(needle);
     if clean_needle.is_empty() {
@@ -180,14 +196,24 @@ fn find_last_case_insensitive(haystack: &str, needle: &str) -> Option<(usize, us
     let lower_needle = clean_needle.to_lowercase();
     if lower_hay.len() != haystack.len() || lower_needle.len() != clean_needle.len() {
         // Unicode safe fallback
-        let idx = lower_hay.rfind(&lower_needle)?;
-        if haystack.is_char_boundary(idx) && haystack.is_char_boundary(idx + lower_needle.len()) {
-            return Some((idx, idx + lower_needle.len()));
+        for (idx, _) in lower_hay.rmatch_indices(&lower_needle) {
+            let end = idx + lower_needle.len();
+            if haystack.is_char_boundary(idx)
+                && haystack.is_char_boundary(end)
+                && is_word_boundary_match(haystack, idx, end, clean_needle)
+            {
+                return Some((idx, end));
+            }
         }
         return None;
     }
-    let idx = lower_hay.rfind(&lower_needle)?;
-    Some((idx, idx + lower_needle.len()))
+    for (idx, _) in lower_hay.rmatch_indices(&lower_needle) {
+        let end = idx + lower_needle.len();
+        if is_word_boundary_match(haystack, idx, end, clean_needle) {
+            return Some((idx, end));
+        }
+    }
+    None
 }
 
 fn find_range_case_insensitive(
@@ -203,15 +229,35 @@ fn find_range_case_insensitive(
     let lower_hay = haystack.to_lowercase();
     let lower_start = clean_start.to_lowercase();
     let lower_end = clean_end.to_lowercase();
-    if lower_hay.len() != haystack.len() {
+    if lower_hay.len() != haystack.len()
+        || lower_start.len() != clean_start.len()
+        || lower_end.len() != clean_end.len()
+    {
         return None;
     }
 
-    let s_idx = lower_hay.find(&lower_start)?;
-    let after_start = s_idx + lower_start.len();
-    let rel_end = lower_hay[after_start..].find(&lower_end)?;
-    let end_idx = after_start + rel_end + lower_end.len();
-    Some((s_idx, end_idx))
+    let mut best_span: Option<(usize, usize)> = None;
+    for (s_idx, _) in lower_hay.match_indices(&lower_start) {
+        let after_start = s_idx + lower_start.len();
+        if !haystack.is_char_boundary(s_idx)
+            || !haystack.is_char_boundary(after_start)
+            || !is_word_boundary_match(haystack, s_idx, after_start, clean_start)
+        {
+            continue;
+        }
+        for (rel_end, _) in lower_hay[after_start..].match_indices(&lower_end) {
+            let end_start = after_start + rel_end;
+            let end_idx = end_start + lower_end.len();
+            if haystack.is_char_boundary(end_start)
+                && haystack.is_char_boundary(end_idx)
+                && is_word_boundary_match(haystack, end_start, end_idx, clean_end)
+            {
+                best_span = Some((s_idx, end_idx));
+                break;
+            }
+        }
+    }
+    best_span
 }
 
 fn split_once_case_insensitive<'a>(text: &'a str, delimiter: &str) -> Option<(&'a str, &'a str)> {
@@ -414,5 +460,20 @@ mod tests {
         assert_eq!(r2.kind, VoiceEditActionKind::ReplaceRange);
         let expected_r2 = "Schedule the architecture sync on Friday.";
         assert_eq!(r2.updated_text, expected_r2);
+    }
+
+    #[test]
+    fn test_voice_edit_respects_word_boundaries() {
+        let base = "The plan is clear and this issue is tiny.";
+        let no_match = apply_voice_edit(base, "remove an", &[], None);
+        assert!(!no_match.matched);
+        assert_eq!(no_match.updated_text, base);
+
+        let replaced = apply_voice_edit(base, "replace is with was", &[], None);
+        assert!(replaced.matched);
+        assert_eq!(
+            replaced.updated_text,
+            "The plan is clear and this issue was tiny."
+        );
     }
 }

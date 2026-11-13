@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RotateCcw, Sparkles } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
-import { applyVoiceEdit } from "@/lib/voiceEdit/engine";
 import {
   DEFAULT_WAKE_WORDS,
   MAX_WAKE_WORDS,
@@ -19,9 +18,6 @@ import { Input } from "../ui/Input";
 import { SettingContainer } from "../ui/SettingContainer";
 import { Switch } from "../ui/Switch";
 
-const INITIAL_STUDIO_DRAFT =
-  "We urgently scheduled the deployment for Tuesday because the old cloud pipeline is way too slow for daily builds.";
-
 interface WakeWordSettingsProps {
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
@@ -33,19 +29,8 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
     const { getSetting, updateSetting, isUpdating } = useSettings();
     const wakeStatus = useWakeWordStore((state) => state.status);
     const lastMatchedWord = useWakeWordStore((state) => state.lastMatchedWord);
-    const simulateWakePhrase = useWakeWordStore(
-      (state) => state.simulateWakePhrase,
-    );
 
     const [newWakeWord, setNewWakeWord] = useState("");
-    const [testPhrase, setTestPhrase] = useState("");
-    const [studioDraft, setStudioDraft] = useState(INITIAL_STUDIO_DRAFT);
-    const [previousStudioDraft, setPreviousStudioDraft] = useState<
-      string | null
-    >(null);
-    const [voiceEditCommand, setVoiceEditCommand] = useState(
-      "replace from old cloud to way too slow with local Rust engine",
-    );
 
     const wakeWordEnabled = getSetting("wake_word_enabled") ?? false;
     const voiceEditEnabled = getSetting("voice_edit_enabled") ?? true;
@@ -108,63 +93,6 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
         e.preventDefault();
         handleAddWakeWord();
       }
-    };
-
-    const handleTestWakePhrase = () => {
-      const phrase = testPhrase.trim();
-      if (!phrase) return;
-      const result = simulateWakePhrase(phrase);
-      if (!result.matched) {
-        notify({
-          title: t("settings.general.wakeWord.test.noMatch"),
-        });
-      }
-    };
-
-    const handleKeyDownTest = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (isComposingKeyEvent(e.nativeEvent)) return;
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleTestWakePhrase();
-      }
-    };
-
-    const executeVoiceEditCommand = (rawCommand: string) => {
-      const cmd = rawCommand.trim();
-      if (!cmd) return;
-      const outcome = applyVoiceEdit(studioDraft, cmd, {
-        previousSnapshot: previousStudioDraft ?? undefined,
-      });
-      if (outcome.matched) {
-        setPreviousStudioDraft(studioDraft);
-        setStudioDraft(outcome.updatedText);
-        notify({
-          title: t("settings.general.wakeWord.voiceEdit.appliedToast", {
-            kind: outcome.command.kind,
-          }),
-        });
-      } else {
-        setPreviousStudioDraft(studioDraft);
-        setStudioDraft((prev) => (prev ? `${prev} ${cmd}` : cmd));
-        notify({
-          title: t("settings.general.wakeWord.voiceEdit.noMatchToast"),
-        });
-      }
-    };
-
-    const handleKeyDownVoiceEdit = (
-      e: React.KeyboardEvent<HTMLInputElement>,
-    ) => {
-      if (isComposingKeyEvent(e.nativeEvent)) return;
-      if (e.key === "Enter") {
-        e.preventDefault();
-        executeVoiceEditCommand(voiceEditCommand);
-      }
-    };
-
-    const handleResetStudioDraft = () => {
-      setPreviousStudioDraft(null);
-      setStudioDraft(INITIAL_STUDIO_DRAFT);
     };
 
     const isArmed = wakeWordEnabled && wakeWords.length > 0;
@@ -295,38 +223,6 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
           </div>
         )}
 
-        {wakeWordEnabled && (
-          <SettingContainer
-            title={t("settings.general.wakeWord.test.title")}
-            description={t("settings.general.wakeWord.test.description")}
-            descriptionMode={descriptionMode}
-            grouped={grouped}
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                className="w-56"
-                value={testPhrase}
-                onChange={(e) => setTestPhrase(e.target.value)}
-                onKeyDown={handleKeyDownTest}
-                placeholder={t("settings.general.wakeWord.test.placeholder", {
-                  sample: wakeWords[0] || DEFAULT_WAKE_WORDS[0],
-                })}
-                variant="compact"
-                disabled={!isArmed}
-              />
-              <Button
-                onClick={handleTestWakePhrase}
-                disabled={!isArmed || !testPhrase.trim()}
-                variant="primary"
-                size="md"
-              >
-                {t("settings.general.wakeWord.test.button")}
-              </Button>
-            </div>
-          </SettingContainer>
-        )}
-
         <SettingContainer
           title={t("settings.general.wakeWord.voiceEdit.title")}
           description={t("settings.general.wakeWord.voiceEdit.description")}
@@ -340,100 +236,6 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
             ariaLabel={t("settings.general.wakeWord.voiceEdit.title")}
           />
         </SettingContainer>
-
-        {voiceEditEnabled && (
-          <div className="px-4 py-3.5 border-t border-line/60 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-accent" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-2">
-                  {t("settings.general.wakeWord.voiceEdit.studioTitle")}
-                </span>
-              </div>
-              <Button
-                onClick={handleResetStudioDraft}
-                variant="secondary"
-                size="sm"
-              >
-                {t("settings.general.wakeWord.voiceEdit.resetButton")}
-              </Button>
-            </div>
-
-            <div className="rounded-lg border border-line bg-surface-1 px-3 py-2.5 text-sm text-ink leading-relaxed font-mono">
-              {studioDraft || "—"}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const cmd =
-                    "replace from old cloud to way too slow with local Rust engine";
-                  setVoiceEditCommand(cmd);
-                  executeVoiceEditCommand(cmd);
-                }}
-              >
-                {t("settings.general.wakeWord.voiceEdit.presetRange")}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const cmd = "replace Tuesday with Thursday";
-                  setVoiceEditCommand(cmd);
-                  executeVoiceEditCommand(cmd);
-                }}
-              >
-                {t("settings.general.wakeWord.voiceEdit.presetReplace")}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const cmd = "remove urgently";
-                  setVoiceEditCommand(cmd);
-                  executeVoiceEditCommand(cmd);
-                }}
-              >
-                {t("settings.general.wakeWord.voiceEdit.presetRemove")}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const cmd = "undo";
-                  setVoiceEditCommand(cmd);
-                  executeVoiceEditCommand(cmd);
-                }}
-              >
-                {t("settings.general.wakeWord.voiceEdit.presetUndo")}
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                className="flex-1"
-                value={voiceEditCommand}
-                onChange={(e) => setVoiceEditCommand(e.target.value)}
-                onKeyDown={handleKeyDownVoiceEdit}
-                placeholder={t(
-                  "settings.general.wakeWord.voiceEdit.commandPlaceholder",
-                )}
-                variant="compact"
-              />
-              <Button
-                onClick={() => executeVoiceEditCommand(voiceEditCommand)}
-                disabled={!voiceEditCommand.trim()}
-                variant="primary"
-                size="md"
-              >
-                {t("settings.general.wakeWord.voiceEdit.runButton")}
-              </Button>
-            </div>
-          </div>
-        )}
       </>
     );
   },

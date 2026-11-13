@@ -272,3 +272,17 @@ pub fn paste_text_direct(enigo: &mut Enigo, text: &str) -> Result<(), String> {
 
     Ok(())
 }
+
+/// Sends `count` Backspace key clicks using Enigo, yielding briefly on larger batches
+/// so target applications reliably process all synthetic keystrokes.
+pub fn send_backspaces(enigo: &mut Enigo, count: usize) -> Result<(), String> {
+    for i in 0..count {
+        enigo
+            .key(Key::Backspace, enigo::Direction::Click)
+            .map_err(|e| format!("Failed to send Backspace key: {}", e))?;
+        if (i + 1) % 24 == 0 && i + 1 < count {
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+    Ok(())
+}
