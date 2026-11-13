@@ -470,7 +470,14 @@ jobs:
         shell: bash
         env:
           SIGN_BINARIES: ${{ inputs.sign-binaries }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -478,32 +485,75 @@ jobs:
         run: |
           bun -e '
             const fs = require("fs");
+            const crypto = require("crypto");
             const path = "src-tauri/tauri.conf.json";
             const conf = JSON.parse(fs.readFileSync(path, "utf8"));
             let changed = false;
 
-            const signEnabled = process.env.SIGN_BINARIES === "true";
-            const hasUpdaterKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY);
-            if (!signEnabled || !hasUpdaterKey) {
-              if (conf.bundle && conf.bundle.createUpdaterArtifacts !== false) {
-                conf.bundle.createUpdaterArtifacts = false;
-                changed = true;
-                console.log("TAURI_SIGNING_PRIVATE_KEY not configured; disabled bundle.createUpdaterArtifacts for this build.");
+            const envOut = [];
+            const exportNonEmpty = (name, val) => {
+              if (typeof val === "string" && val.trim().length > 0) {
+                const delim = "GHENV_" + crypto.randomBytes(8).toString("hex");
+                envOut.push(`${name}<<${delim}\n${val}\n${delim}\n`);
               }
+            };
+
+            const signEnabled = process.env.SIGN_BINARIES === "true";
+            const platform = process.env.RUNNER_PLATFORM || "";
+            const isMac = platform.includes("macos");
+            const isWindows = platform.includes("windows");
+
+            const hasAppleCert = Boolean(
+              process.env.APPLE_CERTIFICATE &&
+              process.env.APPLE_CERTIFICATE.trim() &&
+              process.env.CERT_ID &&
+              process.env.CERT_ID.trim()
+            );
+            if (signEnabled && isMac && hasAppleCert) {
+              exportNonEmpty("APPLE_CERTIFICATE", process.env.APPLE_CERTIFICATE);
+              exportNonEmpty("APPLE_CERTIFICATE_PASSWORD", process.env.APPLE_CERTIFICATE_PASSWORD);
+              exportNonEmpty("APPLE_SIGNING_IDENTITY", process.env.CERT_ID);
+              exportNonEmpty("APPLE_ID", process.env.APPLE_ID);
+              exportNonEmpty("APPLE_ID_PASSWORD", process.env.APPLE_ID_PASSWORD);
+              exportNonEmpty("APPLE_PASSWORD", process.env.APPLE_PASSWORD);
+              exportNonEmpty("APPLE_TEAM_ID", process.env.APPLE_TEAM_ID);
+            } else if (isMac) {
+              console.log("Apple signing credentials not configured; leaving APPLE_* env vars unset for ad-hoc signing.");
             }
 
-            const isWindows = (process.env.RUNNER_PLATFORM || "").includes("windows");
+            const hasUpdaterKey = Boolean(
+              process.env.TAURI_SIGNING_PRIVATE_KEY &&
+              process.env.TAURI_SIGNING_PRIVATE_KEY.trim()
+            );
+            if (signEnabled && hasUpdaterKey) {
+              exportNonEmpty("TAURI_SIGNING_PRIVATE_KEY", process.env.TAURI_SIGNING_PRIVATE_KEY);
+              exportNonEmpty("TAURI_SIGNING_PRIVATE_KEY_PASSWORD", process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD);
+            } else if (conf.bundle && conf.bundle.createUpdaterArtifacts !== false) {
+              conf.bundle.createUpdaterArtifacts = false;
+              changed = true;
+              console.log("TAURI_SIGNING_PRIVATE_KEY not configured; disabled bundle.createUpdaterArtifacts for this build.");
+            }
+
             const hasAzure = Boolean(
               process.env.AZURE_CLIENT_ID &&
+              process.env.AZURE_CLIENT_ID.trim() &&
               process.env.AZURE_CLIENT_SECRET &&
-              process.env.AZURE_TENANT_ID
+              process.env.AZURE_CLIENT_SECRET.trim() &&
+              process.env.AZURE_TENANT_ID &&
+              process.env.AZURE_TENANT_ID.trim()
             );
-            if (isWindows && (!signEnabled || !hasAzure)) {
-              if (conf.bundle && conf.bundle.windows && conf.bundle.windows.signCommand) {
-                delete conf.bundle.windows.signCommand;
-                changed = true;
-                console.log("Azure Trusted Signing secrets not configured; cleared bundle.windows.signCommand for this build.");
-              }
+            if (signEnabled && isWindows && hasAzure) {
+              exportNonEmpty("AZURE_CLIENT_ID", process.env.AZURE_CLIENT_ID);
+              exportNonEmpty("AZURE_CLIENT_SECRET", process.env.AZURE_CLIENT_SECRET);
+              exportNonEmpty("AZURE_TENANT_ID", process.env.AZURE_TENANT_ID);
+            } else if (isWindows && conf.bundle && conf.bundle.windows && conf.bundle.windows.signCommand) {
+              delete conf.bundle.windows.signCommand;
+              changed = true;
+              console.log("Azure Trusted Signing secrets not configured; cleared bundle.windows.signCommand for this build.");
+            }
+
+            if (envOut.length > 0 && process.env.GITHUB_ENV) {
+              fs.appendFileSync(process.env.GITHUB_ENV, envOut.join(""));
             }
 
             if (changed) {
@@ -515,18 +565,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ inputs.sign-binaries && secrets.APPLE_ID || '' }}
-          APPLE_ID_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_ID_PASSWORD || '' }}
-          APPLE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ inputs.sign-binaries && secrets.APPLE_TEAM_ID || '' }}
-          APPLE_CERTIFICATE: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE || '' }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ inputs.sign-binaries && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_SIGNING_IDENTITY: ${{ inputs.sign-binaries && env.CERT_ID || '' }}
-          AZURE_CLIENT_ID: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_ID || '' }}
-          AZURE_CLIENT_SECRET: ${{ inputs.sign-binaries && secrets.AZURE_CLIENT_SECRET || '' }}
-          AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           # The Vulkan loader and Wayland client library must come from the host
           # graphics stack. Bundling Ubuntu's copies ahead of the system libraries can
           # prevent a newer distro's Vulkan ICD or Mesa stack from loading.

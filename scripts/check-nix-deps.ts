@@ -36,49 +36,74 @@ if (process.platform === "win32") process.exit(0);
 // No bun.lock — nothing to do
 if (!existsSync(lockFile)) process.exit(0);
 
-// Ensure .nix directory exists
-mkdirSync(nixDir, { recursive: true });
+// Ensure .nix directory exists and check lockfile compatibility
+try {
+  mkdirSync(nixDir, { recursive: true });
 
-// Compute sha256 of the current bun.lock
-const currentHash = new Bun.CryptoHasher("sha256")
-  .update(readFileSync(lockFile))
-  .digest("hex");
+  const lockContent = readFileSync(lockFile);
 
-// Read the previously stored hash (empty if first run)
-const storedHash = existsSync(hashFile)
-  ? readFileSync(hashFile, "utf-8").trim()
-  : "";
+  let lockfileVersion = 1;
+  try {
+    const parsed = Bun.JSONC.parse(lockContent.toString("utf-8")) as {
+      lockfileVersion?: number;
+    };
+    if (typeof parsed?.lockfileVersion === "number") {
+      lockfileVersion = parsed.lockfileVersion;
+    }
+  } catch {
+    // Ignore parse errors and fall back to default check
+  }
 
-// If hashes match, bun.nix is up to date — nothing to do
-if (currentHash === storedHash) process.exit(0);
+  // bun2nix currently only supports lockfileVersion < 2; skip cleanly so
+  // `bun install` does not emit bun2nix errors or fetch packages unnecessarily.
+  if (lockfileVersion >= 2) {
+    process.exit(0);
+  }
 
-// bun.lock has changed — regenerate the Nix dependency file
-console.log(
-  `[check-nix-deps] bun.lock has changed, regenerating ${nixFile}...`,
-);
+  // Compute sha256 of the current bun.lock
+  const currentHash = new Bun.CryptoHasher("sha256")
+    .update(lockContent)
+    .digest("hex");
 
-const result = Bun.spawnSync(["bunx", "bun2nix", "-o", nixFile], {
-  cwd: root,
-  stdio: ["inherit", "inherit", "inherit"],
-});
+  // Read the previously stored hash (empty if first run)
+  const storedHash = existsSync(hashFile)
+    ? readFileSync(hashFile, "utf-8").trim()
+    : "";
 
-if (result.exitCode !== 0) {
-  console.warn(
-    "[check-nix-deps] Warning: bunx bun2nix failed. .nix/bun.nix may be outdated.",
+  // If hashes match, bun.nix is up to date — nothing to do
+  if (currentHash === storedHash) process.exit(0);
+
+  // bun.lock has changed — regenerate the Nix dependency file
+  console.log(
+    `[check-nix-deps] bun.lock has changed, regenerating ${nixFile}...`,
   );
-  console.warn(
-    "[check-nix-deps] Nix users: run `bunx bun2nix -o .nix/bun.nix` manually.",
+
+  const result = Bun.spawnSync(["bunx", "bun2nix", "-o", nixFile], {
+    cwd: root,
+    stdio: ["inherit", "inherit", "inherit"],
+  });
+
+  if (result.exitCode !== 0) {
+    console.warn(
+      "[check-nix-deps] Warning: bunx bun2nix failed. .nix/bun.nix may be outdated.",
+    );
+    console.warn(
+      "[check-nix-deps] Nix users: run `bunx bun2nix -o .nix/bun.nix` manually.",
+    );
+    console.warn(
+      "[check-nix-deps] Non-Nix users: this is safe to ignore, CI will catch it.",
+    );
+    // Exit 0 so that `bun install` is not blocked for non-Nix developers.
+    // CI validates bun.nix independently.
+    process.exit(0);
+  }
+
+  writeFileSync(hashFile, currentHash + "\n");
+  console.log(`[check-nix-deps] Updated ${nixFile}`);
+  console.log(
+    "[check-nix-deps] Don't forget to commit: .nix/bun.nix .nix/bun-lock-hash",
   );
-  console.warn(
-    "[check-nix-deps] Non-Nix users: this is safe to ignore, CI will catch it.",
-  );
-  // Exit 0 so that `bun install` is not blocked for non-Nix developers.
-  // CI validates bun.nix independently.
+} catch {
+  // Never block `bun install` if the Nix sync check cannot run
   process.exit(0);
 }
-
-writeFileSync(hashFile, currentHash + "\n");
-console.log(`[check-nix-deps] Updated ${nixFile}`);
-console.log(
-  "[check-nix-deps] Don't forget to commit: .nix/bun.nix .nix/bun-lock-hash",
-);
