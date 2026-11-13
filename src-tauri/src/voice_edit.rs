@@ -74,13 +74,12 @@ pub fn try_apply_voice_edit_to_memory(
     }
 }
 
+const OUTER_PUNCT: &str = ".,!?;:\"'“”‘’-–—";
+
 fn strip_outer_punct(input: &str) -> &str {
-    input.trim().trim_matches(|c: char| {
-        matches!(
-            c,
-            '.' | ',' | '!' | '?' | ';' | ':' | '"' | '\'' | '“' | '”' | '‘' | '’' | '-' | '–' | '—'
-        ) || c.is_whitespace()
-    })
+    input
+        .trim()
+        .trim_matches(|c: char| OUTER_PUNCT.contains(c) || c.is_whitespace())
 }
 
 fn strip_leading_prefix<'a>(utterance: &'a str, custom_prefixes: &[String]) -> &'a str {
@@ -276,12 +275,8 @@ pub fn apply_voice_edit(
                                 let removed = &current_text[s..e];
                                 let replacement =
                                     match_case_if_capitalized(removed, replacement_raw);
-                                let raw_updated = format!(
-                                    "{}{}{}",
-                                    &current_text[..s],
-                                    replacement,
-                                    &current_text[e..]
-                                );
+                                let (prefix, suffix) = (&current_text[..s], &current_text[e..]);
+                                let raw_updated = format!("{prefix}{replacement}{suffix}");
                                 return VoiceEditOutcome {
                                     matched: true,
                                     kind: VoiceEditActionKind::ReplaceRange,
@@ -343,12 +338,8 @@ pub fn apply_voice_edit(
                     if let Some((s, e)) = find_last_case_insensitive(current_text, target) {
                         let removed = &current_text[s..e];
                         let replacement = match_case_if_capitalized(removed, replacement_raw);
-                        let raw_updated = format!(
-                            "{}{}{}",
-                            &current_text[..s],
-                            replacement,
-                            &current_text[e..]
-                        );
+                        let (prefix, suffix) = (&current_text[..s], &current_text[e..]);
+                        let raw_updated = format!("{prefix}{replacement}{suffix}");
                         return VoiceEditOutcome {
                             matched: true,
                             kind: VoiceEditActionKind::ReplaceTarget,
@@ -403,7 +394,8 @@ mod tests {
         let res = apply_voice_edit(base, "remove urgently", &[], None);
         assert!(res.matched);
         assert_eq!(res.kind, VoiceEditActionKind::RemoveTarget);
-        assert_eq!(res.updated_text, "We need to deploy the staging server today.");
+        let expected = "We need to deploy the staging server today.";
+        assert_eq!(res.updated_text, expected);
 
         let undo = apply_voice_edit(&res.updated_text, "scratch that", &[], Some(base));
         assert!(undo.matched);
@@ -416,22 +408,14 @@ mod tests {
         let base = "Schedule the design review for Tuesday morning.";
         let r1 = apply_voice_edit(base, "replace Tuesday with Thursday", &[], None);
         assert!(r1.matched);
-        assert_eq!(
-            r1.updated_text,
-            "Schedule the design review for Thursday morning."
-        );
+        let expected_r1 = "Schedule the design review for Thursday morning.";
+        assert_eq!(r1.updated_text, expected_r1);
 
-        let r2 = apply_voice_edit(
-            &r1.updated_text,
-            "replace from design review to Thursday morning with architecture sync on Friday",
-            &[],
-            None,
-        );
+        let cmd = "replace from design review to Thursday morning with architecture sync on Friday";
+        let r2 = apply_voice_edit(&r1.updated_text, cmd, &[], None);
         assert!(r2.matched);
         assert_eq!(r2.kind, VoiceEditActionKind::ReplaceRange);
-        assert_eq!(
-            r2.updated_text,
-            "Schedule the architecture sync on Friday."
-        );
+        let expected_r2 = "Schedule the architecture sync on Friday.";
+        assert_eq!(r2.updated_text, expected_r2);
     }
 }

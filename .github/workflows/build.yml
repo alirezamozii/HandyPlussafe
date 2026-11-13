@@ -173,7 +173,17 @@ jobs:
 
       - name: Install trusted-signing-cli
         if: contains(inputs.platform, 'windows') && inputs.sign-binaries && steps.cache-tsc.outputs.cache-hit != 'true'
-        run: cargo install --locked --force trusted-signing-cli@${{ env.TSC_VERSION }}
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        shell: pwsh
+        run: |
+          if (-not $env:AZURE_CLIENT_ID -or -not $env:AZURE_CLIENT_SECRET -or -not $env:AZURE_TENANT_ID) {
+            Write-Host "Azure Trusted Signing secrets not configured; skipping trusted-signing-cli installation."
+            exit 0
+          }
+          cargo install --locked --force trusted-signing-cli@${{ env.TSC_VERSION }}
 
       - name: Prepare Vulkan SDK for Ubuntu 24.04
         if: contains(inputs.platform, 'ubuntu-24.04') && !contains(inputs.platform, 'arm')
@@ -225,7 +235,11 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            echo "APPLE_CERTIFICATE secret not configured; skipping Apple certificate import (ad-hoc signing will be used)."
+            exit 0
+          fi
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -236,7 +250,13 @@ jobs:
 
       - name: verify certificate
         if: contains(inputs.platform, 'macos') && inputs.sign-binaries
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
         run: |
+          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            echo "APPLE_CERTIFICATE secret not configured; skipping certificate verification."
+            exit 0
+          fi
           CERT_INFO=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application")
           CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
           echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
@@ -445,6 +465,51 @@ jobs:
             "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${arch}.AppImage"
           chmod +x "$tools_dir/linuxdeploy-${arch}.AppImage"
           "$tools_dir/linuxdeploy-${arch}.AppImage" --appimage-extract-and-run --version
+
+      - name: Configure signing fallback when secrets are absent
+        shell: bash
+        env:
+          SIGN_BINARIES: ${{ inputs.sign-binaries }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          RUNNER_PLATFORM: ${{ inputs.platform }}
+        run: |
+          bun -e '
+            const fs = require("fs");
+            const path = "src-tauri/tauri.conf.json";
+            const conf = JSON.parse(fs.readFileSync(path, "utf8"));
+            let changed = false;
+
+            const signEnabled = process.env.SIGN_BINARIES === "true";
+            const hasUpdaterKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY);
+            if (!signEnabled || !hasUpdaterKey) {
+              if (conf.bundle && conf.bundle.createUpdaterArtifacts !== false) {
+                conf.bundle.createUpdaterArtifacts = false;
+                changed = true;
+                console.log("TAURI_SIGNING_PRIVATE_KEY not configured; disabled bundle.createUpdaterArtifacts for this build.");
+              }
+            }
+
+            const isWindows = (process.env.RUNNER_PLATFORM || "").includes("windows");
+            const hasAzure = Boolean(
+              process.env.AZURE_CLIENT_ID &&
+              process.env.AZURE_CLIENT_SECRET &&
+              process.env.AZURE_TENANT_ID
+            );
+            if (isWindows && (!signEnabled || !hasAzure)) {
+              if (conf.bundle && conf.bundle.windows && conf.bundle.windows.signCommand) {
+                delete conf.bundle.windows.signCommand;
+                changed = true;
+                console.log("Azure Trusted Signing secrets not configured; cleared bundle.windows.signCommand for this build.");
+              }
+            }
+
+            if (changed) {
+              fs.writeFileSync(path, JSON.stringify(conf, null, 2) + "\n");
+            }
+          '
 
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0

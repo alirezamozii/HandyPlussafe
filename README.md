@@ -12,17 +12,21 @@
 ## What's New in Handy+ (by mozii)
 
 ### 1. Signature AMOLED Black & Higgsfield Electric Lime (`#D4FF00`) UI/UX
+
 - **True AMOLED Carbon-Black (`#000000`)** canvas with obsidian elevated cards (`#0A0A0A` / `#121212`) and high-contrast **Higgsfield Electric Lime (`#D4FF00`)** interactive states.
 - **Preserved Original Handy Iconography**: Keeps the authentic `cjpais/Handy` hand mark and wordmark SVG geometry, styled with electric lime fill, dark outline stroke, and crisp `#050505` dark ink on active sidebar pills.
 - **International Model Accuracy Display**: Every speech recognition model displays both its letter grade (`A+`, `A`, `B+`) and its explicit **international accuracy percentage (`97%`, `95%`, etc. = `100 - WER%`)** so users worldwide immediately understand model quality without needing familiarity with US academic grading.
 
 ### 2. Hands-Free Wake-Word Activation
+
 - Trigger dictation completely hands-free by speaking any configurable trigger phrase (default: `"hey handy"`, `"handy"`, `"start dictation"`, `"ok handy"`).
 - Uses unicode-aware word-boundary matching (`src/lib/wakeWord/matcher.ts`) so accidental substrings inside normal words never false-trigger.
 - Includes a live **Test Wake Phrase** simulator and status badge right in **Settings → General**.
 
 ### 3. Hands-Free Voice Editing & Range Replacement ("Jarvis Mode")
+
 Edit your dictated text by voice without touching the keyboard (`src/lib/voiceEdit/engine.ts` & `src-tauri/src/voice_edit.rs`):
+
 - **Undo / Scratch That**: Say `"undo"`, `"undo that"`, `"scratch that"`, `"remove all"`, or `"clear all"` to revert or clear the last dictation.
 - **Remove Word or Phrase**: Say `"remove <word/phrase>"` or `"delete <word/phrase>"` to strip specific words cleanly while normalizing spacing and punctuation.
 - **Targeted Replacement**: Say `"replace <old> with <new>"` or `"change <old> to <new>"` to swap words or phrases in-place.
@@ -30,10 +34,12 @@ Edit your dictated text by voice without touching the keyboard (`src/lib/voiceEd
 - Includes an interactive **Voice Edit & Range Replace Studio** in **Settings → General** to test voice editing commands live.
 
 ### 4. Zero-Clipped-Words Audio Pipeline
+
 - **VAD Tail Flush (`SmoothedVad::flush_tail`)**: Flushes uncommitted speech frames in the Silero VAD onset counter and hangover prefill buffer when recording ends (`CaptureSink::finish()`), preventing clipped short words or trailing syllables.
 - **250 ms Default Tail Recording Buffer**: Increases default `extra_recording_buffer_ms` from `0 ms` to `250 ms` so fast key-releases never chop the final spoken word.
 
 ### 5. Upstream Bug Fixes & Reliability Hardening Included
+
 - **#2480 (Offline / Headless Settings Migration)**: Preserves `onboarding_completed: true` whenever `selected_model` is non-empty so manual or headless `settings_store.json` configurations never get reset to the onboarding wizard.
 - **#2408 (Transcription Coordinator Panic Recovery)**: Extracts human-readable panic payloads (`&str` / `String`) and keeps the coordinator thread alive across panics.
 - **#1005 (`--no-tray` / Disabled Tray Exit)**: Closing the main window when the system tray icon is hidden or `--no-tray` is active cleanly exits the process instead of leaving a headless background process.
@@ -62,7 +68,6 @@ The process is entirely local:
   - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
   - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
 - Works on Windows, macOS, and Linux
-
 
 ## Quick Start
 

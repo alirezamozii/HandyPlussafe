@@ -438,4 +438,3 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
     );
   },
 );
-

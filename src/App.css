@@ -285,7 +285,8 @@
 @keyframes wake-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-logo-primary) 50%, transparent);
+    box-shadow: 0 0 0 0
+      color-mix(in srgb, var(--color-logo-primary) 50%, transparent);
   }
   70% {
     box-shadow: 0 0 0 8px transparent;
@@ -318,7 +319,8 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 9999px;
   background: var(--color-logo-primary);
   border: 2px solid var(--color-on-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-logo-primary) 45%, transparent);
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--color-logo-primary) 45%, transparent);
   cursor: pointer;
 }
 
@@ -328,7 +330,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 9999px;
   background: var(--color-logo-primary);
   border: 2px solid var(--color-on-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-logo-primary) 45%, transparent);
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--color-logo-primary) 45%, transparent);
   cursor: pointer;
 }
-

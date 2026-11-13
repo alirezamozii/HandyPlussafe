@@ -99,7 +99,8 @@
 
   /* Demo's recording pill ring and shadow. */
   --light-demo-pill-shadow:
-    0 0 0 1px color-mix(in srgb, var(--light-color-background-ui) 24%, transparent),
+    0 0 0 1px
+      color-mix(in srgb, var(--light-color-background-ui) 24%, transparent),
     0 10px 26px -10px rgba(0, 0, 0, 0.28);
   --dark-demo-pill-shadow:
     0 0 0 1px

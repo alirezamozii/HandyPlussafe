@@ -5,11 +5,7 @@ import {
 } from "./matcher";
 
 export type WakeEngineStatus =
-  | "off"
-  | "listening"
-  | "triggered"
-  | "unavailable"
-  | "error";
+  "off" | "listening" | "triggered" | "unavailable" | "error";
 
 interface SpeechRecognitionAlternativeLike {
   transcript: string;
@@ -166,7 +162,10 @@ export class BrowserWakeWordEngine {
 
     recognition.onerror = (event) => {
       if (!this.active) return;
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
         this.onStatusChange?.("unavailable", event.error);
         this.active = false;
         return;

@@ -114,7 +114,9 @@ export const GradeTip: React.FC<{
     </span>
   );
   const gradeLabelWithPct =
-    grade.accuracy != null ? `${grade.label} (${grade.accuracy}%)` : grade.label;
+    grade.accuracy != null
+      ? `${grade.label} (${grade.accuracy}%)`
+      : grade.label;
   return (
     <Tooltip
       title={

@@ -53,10 +53,30 @@ jobs:
           name: handy-computer
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
+      - name: Check lockfiles for Nix evaluation
+        id: lockfiles
+        run: |
+          if [ ! -f bun.lock ]; then
+            echo "missing_bun_lock=true" >> "$GITHUB_OUTPUT"
+            echo "bun.lock is not present in repository; skipping bun2nix and Nix flake evaluation."
+          else
+            lock_ver="$(bun -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("bun.lock","utf8")); console.log(j.lockfileVersion ?? 1)' 2>/dev/null || echo 1)"
+            echo "bun_lock_version=$lock_ver" >> "$GITHUB_OUTPUT"
+            if [ "$lock_ver" -ge 2 ] 2>/dev/null; then
+              echo "unsupported_bun_lock=true" >> "$GITHUB_OUTPUT"
+              echo "bun.lock uses lockfileVersion $lock_ver which bun2nix does not support yet; skipping bun2nix check."
+            fi
+          fi
+          if [ ! -f src-tauri/Cargo.lock ]; then
+            echo "missing_cargo_lock=true" >> "$GITHUB_OUTPUT"
+            echo "src-tauri/Cargo.lock is not present in repository; skipping Nix flake eval/build."
+          fi
+
       # Regenerate .nix/bun.nix from bun.lock and check if it matches
       # what's committed. A diff means the developer forgot to run
       # bun scripts/check-nix-deps.ts or bun install (which triggers it).
       - name: Check bun.nix is up to date
+        if: steps.lockfiles.outputs.missing_bun_lock != 'true' && steps.lockfiles.outputs.unsupported_bun_lock != 'true'
         id: bun-check
         run: |
           bunx bun2nix -o .nix/bun.nix
@@ -88,7 +108,7 @@ jobs:
       # Skip if bun.nix is already outdated — nix eval would fail with a
       # cryptic error, and the bun-check step already printed a clear message.
       - name: Check flake evaluation
-        if: steps.bun-check.outputs.outdated != 'true'
+        if: steps.lockfiles.outputs.missing_bun_lock != 'true' && steps.lockfiles.outputs.missing_cargo_lock != 'true' && steps.bun-check.outputs.outdated != 'true'
         id: eval
         run: |
           if ! nix eval .#packages.x86_64-linux.handy.drvPath 2>eval_err.log; then
@@ -109,7 +129,7 @@ jobs:
       # changed, the quick checks above are sufficient.
       # Skipped on workflow_dispatch (no base ref) — full build runs instead.
       - name: Check if nix files changed
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.lockfiles.outputs.missing_bun_lock != 'true' && steps.lockfiles.outputs.missing_cargo_lock != 'true'
         id: nix-files
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,5 +146,5 @@ jobs:
       # On push to main and workflow_dispatch: always runs so every commit on
       # main has a verified nix build. cachix-action auto-pushes artifacts.
       - name: Build handy
-        if: steps.bun-check.outputs.outdated != 'true' && steps.eval.outputs.failed != 'true' && (steps.nix-files.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+        if: steps.lockfiles.outputs.missing_bun_lock != 'true' && steps.lockfiles.outputs.missing_cargo_lock != 'true' && steps.bun-check.outputs.outdated != 'true' && steps.eval.outputs.failed != 'true' && (steps.nix-files.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
         run: nix build .#handy -L --show-trace

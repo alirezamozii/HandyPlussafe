@@ -540,19 +540,18 @@ pub async fn send_chat_completion_with_schema(
         && matches!(status.as_u16(), 400 | 422)
         && !request_body.reasoning.is_empty()
     {
-        let error_text = response.text().await.unwrap_or_else(|e| {
-            report_reqwest_error("Failed to read reasoning rejection response", &e)
-        });
-
         let fallback_thinking = ReasoningParams {
             thinking: Some(serde_json::json!({ "type": "disabled" })),
             ..Default::default()
         };
 
         if request_body.reasoning != fallback_thinking && provider.id == "custom" {
+            let error_text = response.text().await.unwrap_or_else(|e| {
+                report_reqwest_error("Failed to read reasoning rejection response", &e)
+            });
             debug!(
-                "Endpoint rejected primary reasoning-disable spelling ({}); trying thinking.type=disabled",
-                status
+                "Endpoint rejected primary reasoning-disable spelling ({}): {}; trying thinking.type=disabled",
+                status, error_text
             );
             request_body.reasoning = fallback_thinking;
             response = client
@@ -565,6 +564,9 @@ pub async fn send_chat_completion_with_schema(
         }
 
         if !status.is_success() && matches!(status.as_u16(), 400 | 422) {
+            let error_text = response.text().await.unwrap_or_else(|e| {
+                report_reqwest_error("Failed to read reasoning rejection response", &e)
+            });
             warn!(
                 "Endpoint rejected reasoning-disable parameters (status {}): {}. Retrying without reasoning fields (model thinking may remain active)",
                 status, error_text
@@ -1072,5 +1074,40 @@ mod tests {
         )
         .await;
         assert!(result.unwrap_err().contains("truncated"));
+    }
+
+    #[tokio::test]
+    async fn custom_provider_retries_without_reasoning_after_400_and_422() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let responses = [
+                ("400 Bad Request", r#"{"error":"unknown reasoning_effort"}"#),
+                ("422 Unprocessable Entity", r#"{"error":"unknown thinking"}"#),
+                ("200 OK", r#"{"choices":[{"message":{"content":"Cleaned"}}]}"#),
+            ];
+            for (status, body) in responses {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut req = [0_u8; 4096];
+                let _ = stream.read(&mut req).await.unwrap();
+                let res = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                stream.write_all(res.as_bytes()).await.unwrap();
+            }
+        });
+
+        let base_url = format!("http://{address}");
+        let result = send_chat_completion(
+            &provider("custom", &base_url),
+            "key".to_string(),
+            "fallback-model",
+            "raw text".to_string(),
+            true,
+        )
+        .await;
+        assert_eq!(result, Ok(Some("Cleaned".to_string())));
     }
 }

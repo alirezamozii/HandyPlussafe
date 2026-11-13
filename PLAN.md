@@ -38,7 +38,7 @@
    - **Issue #1005 & `--no-tray` Window Close Behavior**:
      - In `src-tauri/src/lib.rs`, when `WindowEvent::CloseRequested` fires and `!settings.show_tray_icon || cli_args.no_tray`, cleanly exit the application (`app_handle().exit(0)`) instead of hiding the window into an unrecoverable background process.
    - **Issue #642 (Mute System Audio Delay Captures First Words of Media/YouTube)**:
-     - In `src-tauri/src/actions.rs`, apply system audio mute (`rm.apply_mute()`) immediately before microphone capture when audio feedback is disabled, and unmute (`rm.remove_mute()`) only *after* `rm.stop_recording()` finishes draining captured samples.
+     - In `src-tauri/src/actions.rs`, apply system audio mute (`rm.apply_mute()`) immediately before microphone capture when audio feedback is disabled, and unmute (`rm.remove_mute()`) only _after_ `rm.stop_recording()` finishes draining captured samples.
    - **Issues #502 & #1366 (Clipboard Restore Race Under GPU/System Load & Wayland `wl-copy`)**:
      - Increase default `paste_delay_after_ms` floor in `src-tauri/src/settings.rs` (`180 ms` default instead of `100 ms`) so target apps under load read the new transcript before the previous clipboard is restored.
    - **Issue #483 (`env:VAR_NAME` Secret Resolution for LLM Post-Processing)**:

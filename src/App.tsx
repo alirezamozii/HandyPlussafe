@@ -42,11 +42,7 @@ import RecordingOverlay from "./overlay/RecordingOverlay";
 
 // flow is first-run onboarding; the rest are single screens for returning users.
 type OnboardingStep =
-  | "flow"
-  | "permissions"
-  | "migration"
-  | "replaceModel"
-  | "done";
+  "flow" | "permissions" | "migration" | "replaceModel" | "done";
 
 const renderSettingsContent = (
   section: SidebarSection,

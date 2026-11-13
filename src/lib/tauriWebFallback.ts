@@ -264,7 +264,10 @@ function saveHistoryToStorage(entries: HistoryEntry[]): void {
   }
 }
 
-const callbacks = new Map<number, { fn: (data: unknown) => void; once: boolean }>();
+const callbacks = new Map<
+  number,
+  { fn: (data: unknown) => void; once: boolean }
+>();
 const listeners: EventCallbackEntry[] = [];
 let nextCallbackId = 1;
 let nextEventId = 1;
@@ -323,8 +326,13 @@ export function triggerWebSimulatedDictation(options?: {
   const words = phrase.split(/\s+/);
 
   webRecording = true;
-  dispatchEvent("recording-state-event", { phase: "started" as RecordingPhase });
-  dispatchEvent("show-overlay", webSettings.overlay_style === "minimal" ? "recording" : "streaming");
+  dispatchEvent("recording-state-event", {
+    phase: "started" as RecordingPhase,
+  });
+  dispatchEvent(
+    "show-overlay",
+    webSettings.overlay_style === "minimal" ? "recording" : "streaming",
+  );
   dispatchEvent("recording-ready", null);
 
   let step = 0;
@@ -337,7 +345,10 @@ export function triggerWebSimulatedDictation(options?: {
     dispatchEvent("mic-level", levels);
 
     if (webSettings.overlay_style !== "minimal") {
-      const visibleCount = Math.min(words.length, Math.max(1, Math.ceil((step / 14) * words.length)));
+      const visibleCount = Math.min(
+        words.length,
+        Math.max(1, Math.ceil((step / 14) * words.length)),
+      );
       const committed = words.slice(0, Math.max(0, visibleCount - 1)).join(" ");
       const tentative = words[visibleCount - 1] ?? "";
       dispatchEvent("stream-text-event", { committed, tentative });
@@ -477,11 +488,21 @@ async function handleWebInvoke(
       return { start: false, stop: false };
     case "get_available_microphones":
       return [
-        { index: "default", name: "System Default Microphone", is_default: true },
-        { index: "web-mic-1", name: "Studio USB Microphone", is_default: false },
+        {
+          index: "default",
+          name: "System Default Microphone",
+          is_default: true,
+        },
+        {
+          index: "web-mic-1",
+          name: "Studio USB Microphone",
+          is_default: false,
+        },
       ];
     case "get_available_output_devices":
-      return [{ index: "default", name: "System Default Output", is_default: true }];
+      return [
+        { index: "default", name: "System Default Output", is_default: true },
+      ];
     case "get_selected_microphone":
       return webSettings.selected_microphone ?? "Default";
     case "get_clamshell_microphone":
@@ -598,7 +619,9 @@ async function handleWebInvoke(
     case "download_model": {
       const modelId = String(args.modelId ?? "");
       webModels = webModels.map((m) =>
-        m.id === modelId ? { ...m, is_downloaded: true, is_downloading: false } : m,
+        m.id === modelId
+          ? { ...m, is_downloaded: true, is_downloading: false }
+          : m,
       );
       dispatchEvent("model-download-complete", modelId);
       return null;
@@ -611,12 +634,18 @@ async function handleWebInvoke(
       return null;
     }
     case "change_theme_setting":
-      webSettings = { ...webSettings, theme: args.theme as AppSettings["theme"] };
+      webSettings = {
+        ...webSettings,
+        theme: args.theme as AppSettings["theme"],
+      };
       saveSettingsToStorage(webSettings);
       dispatchEvent("theme-changed", webSettings.theme);
       return null;
     case "change_wake_word_enabled_setting":
-      webSettings = { ...webSettings, wake_word_enabled: Boolean(args.enabled) };
+      webSettings = {
+        ...webSettings,
+        wake_word_enabled: Boolean(args.enabled),
+      };
       saveSettingsToStorage(webSettings);
       dispatchEvent("settings-changed", {
         setting: "wake_word_enabled",
@@ -663,7 +692,8 @@ async function handleWebInvoke(
     case "change_shortcut_activation_setting":
       webSettings = {
         ...webSettings,
-        shortcut_activation: args.activation as AppSettings["shortcut_activation"],
+        shortcut_activation:
+          args.activation as AppSettings["shortcut_activation"],
       };
       saveSettingsToStorage(webSettings);
       return null;
@@ -672,26 +702,40 @@ async function handleWebInvoke(
       saveSettingsToStorage(webSettings);
       return null;
     case "change_audio_feedback_volume_setting":
-      webSettings = { ...webSettings, audio_feedback_volume: Number(args.volume ?? 1) };
+      webSettings = {
+        ...webSettings,
+        audio_feedback_volume: Number(args.volume ?? 1),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_mute_while_recording_setting":
-      webSettings = { ...webSettings, mute_while_recording: Boolean(args.enabled) };
+      webSettings = {
+        ...webSettings,
+        mute_while_recording: Boolean(args.enabled),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_selected_language_setting":
-      webSettings = { ...webSettings, selected_language: String(args.language ?? "auto") };
+      webSettings = {
+        ...webSettings,
+        selected_language: String(args.language ?? "auto"),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_spoken_languages_setting":
       webSettings = {
         ...webSettings,
-        spoken_languages: Array.isArray(args.languages) ? args.languages.map(String) : [],
+        spoken_languages: Array.isArray(args.languages)
+          ? args.languages.map(String)
+          : [],
       };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_app_language_setting":
-      webSettings = { ...webSettings, app_language: String(args.language ?? "en") };
+      webSettings = {
+        ...webSettings,
+        app_language: String(args.language ?? "en"),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "update_custom_words":
@@ -702,11 +746,17 @@ async function handleWebInvoke(
       saveSettingsToStorage(webSettings);
       return null;
     case "change_experimental_enabled_setting":
-      webSettings = { ...webSettings, experimental_enabled: Boolean(args.enabled) };
+      webSettings = {
+        ...webSettings,
+        experimental_enabled: Boolean(args.enabled),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_post_process_enabled_setting":
-      webSettings = { ...webSettings, post_process_enabled: Boolean(args.enabled) };
+      webSettings = {
+        ...webSettings,
+        post_process_enabled: Boolean(args.enabled),
+      };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_debug_mode_setting":
@@ -716,14 +766,18 @@ async function handleWebInvoke(
     case "change_overlay_style_setting":
       webSettings = {
         ...webSettings,
-        overlay_style: String(args.style ?? "live") as AppSettings["overlay_style"],
+        overlay_style: String(
+          args.style ?? "live",
+        ) as AppSettings["overlay_style"],
       };
       saveSettingsToStorage(webSettings);
       return null;
     case "change_overlay_position_setting":
       webSettings = {
         ...webSettings,
-        overlay_position: String(args.position ?? "bottom") as AppSettings["overlay_position"],
+        overlay_position: String(
+          args.position ?? "bottom",
+        ) as AppSettings["overlay_position"],
       };
       saveSettingsToStorage(webSettings);
       return null;
@@ -754,7 +808,10 @@ async function handleWebInvoke(
       const id = String(args.id ?? "");
       const existing = webSettings.bindings?.[id];
       if (existing) {
-        const reset = { ...existing, current_binding: existing.default_binding };
+        const reset = {
+          ...existing,
+          current_binding: existing.default_binding,
+        };
         webSettings = {
           ...webSettings,
           bindings: { ...webSettings.bindings, [id]: reset },
