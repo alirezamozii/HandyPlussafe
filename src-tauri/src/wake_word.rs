@@ -148,7 +148,7 @@ fn run_monitor_loop(app: AppHandle) {
     loop {
         if !ctrl.armed.load(Ordering::SeqCst) {
             let guard = ctrl.wait_lock.lock().unwrap();
-            let _ = ctrl
+            let _wait_guard = ctrl
                 .condvar
                 .wait_while(guard, |_| !ctrl.armed.load(Ordering::SeqCst));
             continue;

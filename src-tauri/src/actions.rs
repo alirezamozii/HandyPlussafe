@@ -171,7 +171,10 @@ fn build_system_prompt(prompt_template: &str) -> String {
             let mut s = String::with_capacity(without_output.len());
             s.push_str(&without_output[..start]);
             s.push_str(&without_output[end + "</transcript>".len()..]);
-            s.replace("The above is a transcript", "The user message is a transcript")
+            s.replace(
+                "The above is a transcript",
+                "The user message is a transcript",
+            )
         } else {
             without_output
         }
@@ -527,10 +530,9 @@ pub(crate) async fn process_transcription_output(
     // is a voice-edit command (e.g. "replace X with Y", "remove X", "replace from X to Y with Z", "undo"),
     // transform the previous dictation in-place instead of typing the literal command.
     if settings.voice_edit_enabled {
-        if let Some(edit_outcome) = crate::voice_edit::try_apply_voice_edit_to_memory(
-            &final_text,
-            &settings.wake_words,
-        ) {
+        if let Some(edit_outcome) =
+            crate::voice_edit::try_apply_voice_edit_to_memory(&final_text, &settings.wake_words)
+        {
             debug!(
                 "Voice Edit applied ({:?}): {}",
                 edit_outcome.kind, edit_outcome.summary

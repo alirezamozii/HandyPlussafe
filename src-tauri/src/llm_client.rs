@@ -1084,8 +1084,14 @@ mod tests {
         tokio::spawn(async move {
             let responses = [
                 ("400 Bad Request", r#"{"error":"unknown reasoning_effort"}"#),
-                ("422 Unprocessable Entity", r#"{"error":"unknown thinking"}"#),
-                ("200 OK", r#"{"choices":[{"message":{"content":"Cleaned"}}]}"#),
+                (
+                    "422 Unprocessable Entity",
+                    r#"{"error":"unknown thinking"}"#,
+                ),
+                (
+                    "200 OK",
+                    r#"{"choices":[{"message":{"content":"Cleaned"}}]}"#,
+                ),
             ];
             for (status, body) in responses {
                 let (mut stream, _) = listener.accept().await.unwrap();

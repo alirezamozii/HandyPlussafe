@@ -310,10 +310,7 @@ pub fn apply_voice_edit(
                         return VoiceEditOutcome {
                             matched: true,
                             kind: VoiceEditActionKind::DeleteRange,
-                            summary: format!(
-                                "Delete from \"{}\" to \"{}\"",
-                                start_word, end_word
-                            ),
+                            summary: format!("Delete from \"{}\" to \"{}\"", start_word, end_word),
                             previous_text: current_text.to_string(),
                             updated_text: normalize_spacing_and_punctuation(&raw_updated),
                         };
