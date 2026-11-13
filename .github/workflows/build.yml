@@ -16,6 +16,10 @@ on:
       release-id:
         required: false
         type: string
+      release-tag:
+        required: false
+        type: string
+        default: ""
       asset-prefix:
         required: false
         type: string
@@ -569,17 +573,12 @@ jobs:
           # graphics stack. Bundling Ubuntu's copies ahead of the system libraries can
           # prevent a newer distro's Vulkan ICD or Mesa stack from loading.
           # linuxdeploy reads this semicolon-separated glob list before it creates
-          # (and Tauri signs and uploads) the AppImage, so the published artifact
-          # is already clean.
+          # the AppImage, so the published artifact is already clean.
           LINUXDEPLOY_EXCLUDED_LIBRARIES: ${{ contains(inputs.platform, 'ubuntu') && 'libvulkan.so*;libwayland-client.so*' || '' }}
           # linuxdeploy passes this to appimagetool, which writes it as
           # X-AppImage-Version for desktop integration tools such as Gear Lever.
           LINUXDEPLOY_OUTPUT_VERSION: ${{ contains(inputs.platform, 'ubuntu') && steps.get-version.outputs.version || '' }}
         with:
-          tagName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
-          releaseName: ${{ inputs.release-id && format('v{0}', steps.get-version.outputs.version) || '' }}
-          releaseId: ${{ inputs.release-id }}
-          assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
           args: ${{ inputs.build-args }}
 
       # tauri-action uploads release assets before returning. All AppImage
@@ -921,3 +920,80 @@ jobs:
             src-tauri/target/${{ inputs.target != '' && inputs.target != 'x86_64-pc-windows-msvc' && format('{0}/{1}', inputs.target, steps.build-profile.outputs.profile) || steps.build-profile.outputs.profile }}/bundle/msi/*.msi
             src-tauri/target/${{ inputs.target != '' && inputs.target != 'x86_64-pc-windows-msvc' && format('{0}/{1}', inputs.target, steps.build-profile.outputs.profile) || steps.build-profile.outputs.profile }}/bundle/nsis/*.exe
           retention-days: 30
+
+      - name: Upload bundles to GitHub Release
+        if: inputs.release-id != '' || inputs.release-tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+          PROFILE: ${{ steps.build-profile.outputs.profile }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG:-v${VERSION}}"
+
+          shopt -s nullglob
+          FILES=()
+          for base in "src-tauri/target/${PROFILE}/bundle" "src-tauri/target/${TARGET}/${PROFILE}/bundle"; do
+            if [ -d "$base" ]; then
+              for f in \
+                "$base"/dmg/*.dmg \
+                "$base"/deb/*.deb \
+                "$base"/appimage/*.AppImage \
+                "$base"/rpm/*.rpm \
+                "$base"/msi/*.msi \
+                "$base"/nsis/*.exe; do
+                if [ -f "$f" ]; then
+                  FILES+=("$f")
+                fi
+              done
+            fi
+          done
+
+          UNIQUE_FILES=()
+          for f in "${FILES[@]}"; do
+            skip=0
+            for u in "${UNIQUE_FILES[@]:-}"; do
+              if [ "$f" = "$u" ]; then
+                skip=1
+                break
+              fi
+            done
+            if [ "$skip" -eq 0 ]; then
+              UNIQUE_FILES+=("$f")
+            fi
+          done
+
+          if [ "${#UNIQUE_FILES[@]}" -eq 0 ]; then
+            echo "ERROR: No bundle files found to upload to release $TAG" >&2
+            exit 1
+          fi
+
+          echo "Uploading ${#UNIQUE_FILES[@]} bundle(s) to GitHub Release ${TAG}:"
+          printf '  - %s\n' "${UNIQUE_FILES[@]}"
+
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Handy+ ${TAG}" \
+              --generate-notes \
+              --latest || true
+          else
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft=false || true
+          fi
+
+          for attempt in 1 2 3; do
+            if gh release upload "$TAG" "${UNIQUE_FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"; then
+              echo "Successfully uploaded assets to release $TAG"
+              exit 0
+            fi
+            echo "Upload attempt $attempt failed; retrying in 5s..."
+            sleep 5
+          done
+
+          echo "ERROR: Failed to upload assets to release $TAG after 3 attempts" >&2
+          exit 1

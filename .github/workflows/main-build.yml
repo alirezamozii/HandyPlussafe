@@ -1,19 +1,108 @@
 name: "Main Branch Build"
 
-# Runs the full cross-platform build on every push to main so breakage is
-# caught before a manual release is triggered. Artifacts are kept for 30 days
-# so any commit on main has a downloadable, testable build.
+# Runs the full cross-platform build on every push to main and publishes
+# downloadable platform installers to GitHub Releases (plus workflow artifacts).
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  prepare-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.ensure-release.outputs.result }}
+      release-tag: ${{ steps.get-version.outputs.tag }}
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Get version from tauri.conf.json
+        id: get-version
+        shell: bash
+        run: |
+          VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | head -n 1 | cut -d'"' -f4)
+          TAG="v${VERSION}"
+          echo "Application version from tauri.conf.json: $VERSION (tag: $TAG)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create or Update Published GitHub Release
+        id: ensure-release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const tag = "${{ steps.get-version.outputs.tag }}";
+            const sha = context.sha;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Ensure git tag points to current commit
+            try {
+              await github.rest.git.updateRef({
+                owner,
+                repo,
+                ref: `tags/${tag}`,
+                sha,
+                force: true,
+              });
+            } catch (_err) {
+              try {
+                await github.rest.git.createRef({
+                  owner,
+                  repo,
+                  ref: `refs/tags/${tag}`,
+                  sha,
+                });
+              } catch (createErr) {
+                console.log("Tag ref notice:", createErr.message);
+              }
+            }
+
+            // Find existing release (including drafts) or create a published release
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const existing = releases.find((r) => r.tag_name === tag);
+
+            if (existing) {
+              const { data } = await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: existing.id,
+                tag_name: tag,
+                target_commitish: sha,
+                name: `${tag} (Latest Build)`,
+                draft: false,
+                prerelease: false,
+              });
+              return String(data.id);
+            }
+
+            const { data } = await github.rest.repos.createRelease({
+              owner,
+              repo,
+              tag_name: tag,
+              target_commitish: sha,
+              name: `${tag} (Latest Build)`,
+              draft: false,
+              prerelease: false,
+              generate_release_notes: true,
+            });
+            return String(data.id);
+
   build:
+    needs: prepare-release
     permissions:
       contents: write
     strategy:
@@ -49,4 +138,6 @@ jobs:
       build-args: ${{ matrix.args }}
       upload-artifacts: true
       sign-binaries: true
+      release-id: ${{ needs.prepare-release.outputs.release-id }}
+      release-tag: ${{ needs.prepare-release.outputs.release-tag }}
     secrets: inherit
