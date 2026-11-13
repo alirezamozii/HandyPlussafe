@@ -389,6 +389,53 @@
           "push_to_talk": "按住快捷鍵期間錄音",
           "toggle": "輕按快捷鍵開始錄音，再次輕按停止"
         }
+      },
+      "wakeWord": {
+        "groupTitle": "Voice Activation",
+        "toggle": {
+          "title": "Wake-Word Hands-Free Mode",
+          "description": "Listen continuously for your trigger phrases to start dictation without pressing a key."
+        },
+        "phrases": {
+          "title": "Trigger Words & Phrases",
+          "description": "Say any configured phrase to start dictating automatically. Boundary matching ignores accidental substrings.",
+          "placeholder": "Add wake phrase (e.g. computer)",
+          "add": "Add",
+          "remove": "Remove wake phrase {{word}}",
+          "duplicate": "\"{{word}}\" is already in your wake-word list",
+          "limitReached": "You can add up to {{max}} wake phrases",
+          "resetTooltip": "Restore default wake phrases"
+        },
+        "status": {
+          "off": "Off",
+          "armed": "Armed",
+          "triggered": "Triggered: {{word}}",
+          "noWords": "Add a phrase",
+          "unavailable": "Mic unavailable"
+        },
+        "test": {
+          "title": "Test Wake Phrase",
+          "description": "Simulate a spoken sentence containing one of your wake words to verify hands-free activation.",
+          "placeholder": "e.g. {{sample}} write down my notes",
+          "button": "Test Phrase",
+          "noMatch": "Phrase didn't match any configured wake word"
+        },
+        "voiceEdit": {
+          "title": "Hands-Free Voice Editing (Jarvis Mode)",
+          "description": "Say commands like \"undo\", \"remove <word>\", \"replace <old> with <new>\", or \"replace from <start> to <end> with <new>\" to edit your last dictation.",
+          "studioTitle": "Voice Edit & Range Replace Studio",
+          "studioDescription": "Test hands-free voice editing commands against a live draft transcript.",
+          "draftLabel": "Active Draft Transcript",
+          "commandPlaceholder": "e.g. replace from old cloud to way too slow with local Rust engine",
+          "runButton": "Apply Voice Edit",
+          "resetButton": "Reset Draft",
+          "presetReplace": "Replace word",
+          "presetRange": "Replace from X to Y",
+          "presetRemove": "Remove word",
+          "presetUndo": "Undo last edit",
+          "appliedToast": "Voice edit applied ({{kind}})",
+          "noMatchToast": "Normal dictation appended (no edit command matched)"
+        }
       }
     },
     "models": {
@@ -883,7 +930,8 @@
       "sourceCode": {
         "title": "原始碼",
         "description": "檢視原始碼並參與貢獻",
-        "button": "在 GitHub 上檢視"
+        "button": "在 GitHub 上檢視",
+        "upstreamButton": "Upstream Handy"
       },
       "supportDevelopment": {
         "title": "支持開發",
@@ -913,7 +961,12 @@
     "portableUpdateMessage": "可攜式安裝無法自動更新。請透過下方按鈕下載適用於你的系統的安裝程式，執行後安裝到相同資料夾，你的 Data/ 資料夾（設定、模型、錄音）會保留在原處。",
     "portableUpdateButton": "下載安裝程式",
     "portableUpdateBrowseMessage": "可攜式安裝無法自動更新。請從 GitHub Releases 下載適用於你的系統的最新版本，並安裝到相同資料夾，你的 Data/ 資料夾（設定、模型、錄音）會保留在原處。",
-    "portableUpdateBrowseButton": "開啟 GitHub Releases"
+    "portableUpdateBrowseButton": "開啟 GitHub Releases",
+    "wakeWord": {
+      "armed": "Wake: {{count}} armed",
+      "triggered": "Triggered: {{word}}",
+      "noPhrases": "Wake: add a phrase"
+    }
   },
   "whatsNew": {
     "title": "Handy v{{version}} 新功能"

@@ -97,17 +97,16 @@ pub async fn transcribe_file(
 #[specta::specta]
 pub async fn update_history_limit(
     app: AppHandle,
-    history_manager: State<'_, Arc<HistoryManager>>,
+    _history_manager: State<'_, Arc<HistoryManager>>,
     limit: usize,
 ) -> Result<(), String> {
     let mut settings = crate::settings::get_settings(&app);
     settings.history_limit = limit;
     crate::settings::write_settings(&app, settings);
 
-    history_manager
-        .cleanup_old_entries()
-        .map_err(|e| e.to_string())?;
-
+    // Do not synchronously delete existing recordings when the user is adjusting
+    // history settings in the UI (#1262 / #1311). Cleanup runs naturally on the
+    // next recording save.
     Ok(())
 }
 
@@ -115,7 +114,7 @@ pub async fn update_history_limit(
 #[specta::specta]
 pub async fn update_recording_retention_period(
     app: AppHandle,
-    history_manager: State<'_, Arc<HistoryManager>>,
+    _history_manager: State<'_, Arc<HistoryManager>>,
     period: String,
 ) -> Result<(), String> {
     use crate::settings::RecordingRetentionPeriod;
@@ -133,9 +132,7 @@ pub async fn update_recording_retention_period(
     settings.recording_retention_period = retention_period;
     crate::settings::write_settings(&app, settings);
 
-    history_manager
-        .cleanup_old_entries()
-        .map_err(|e| e.to_string())?;
-
+    // Do not synchronously wipe existing recordings when toggling retention period
+    // options (#1262 / #1311). Cleanup runs on the next saved entry.
     Ok(())
 }

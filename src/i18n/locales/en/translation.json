@@ -330,7 +330,7 @@
     "general": {
       "title": "General",
       "shortcut": {
-        "title": "Handy Shortcuts",
+        "title": "Handy+ Shortcuts",
         "description": "Configure keyboard shortcuts to trigger speech-to-text recording",
         "loading": "Loading shortcuts...",
         "none": "No shortcuts configured",
@@ -352,6 +352,53 @@
         },
         "errors": {
           "set": "Failed to set shortcut: {{error}}"
+        }
+      },
+      "wakeWord": {
+        "groupTitle": "Voice Activation",
+        "toggle": {
+          "title": "Wake-Word Hands-Free Mode",
+          "description": "Listen continuously for your trigger phrases to start dictation without pressing a key."
+        },
+        "phrases": {
+          "title": "Trigger Words & Phrases",
+          "description": "Say any configured phrase to start dictating automatically. Boundary matching ignores accidental substrings.",
+          "placeholder": "Add phrase (e.g. computer)",
+          "add": "Add",
+          "remove": "Remove wake phrase {{word}}",
+          "duplicate": "\"{{word}}\" is already in your wake-word list",
+          "limitReached": "You can add up to {{max}} wake phrases",
+          "resetTooltip": "Restore default wake phrases"
+        },
+        "status": {
+          "off": "Off",
+          "armed": "Armed",
+          "triggered": "Triggered: {{word}}",
+          "noWords": "Add a phrase",
+          "unavailable": "Mic unavailable"
+        },
+        "test": {
+          "title": "Test Wake Phrase",
+          "description": "Simulate a spoken sentence containing one of your wake words to verify hands-free activation.",
+          "placeholder": "e.g. {{sample}} open notes",
+          "button": "Test Phrase",
+          "noMatch": "Phrase didn't match any configured wake word"
+        },
+        "voiceEdit": {
+          "title": "Hands-Free Voice Editing (Jarvis Mode)",
+          "description": "Say commands like \"undo\", \"remove <word>\", \"replace <old> with <new>\", or \"replace from <start> to <end> with <new>\" to edit your last dictation.",
+          "studioTitle": "Voice Edit & Range Replace Studio",
+          "studioDescription": "Test hands-free voice editing commands against a live draft transcript.",
+          "draftLabel": "Active Draft Transcript",
+          "commandPlaceholder": "e.g. replace from old cloud to way too slow with local Rust engine",
+          "runButton": "Apply Voice Edit",
+          "resetButton": "Reset Draft",
+          "presetReplace": "Replace word",
+          "presetRange": "Replace from X to Y",
+          "presetRemove": "Remove word",
+          "presetUndo": "Undo last edit",
+          "appliedToast": "Voice edit applied ({{kind}})",
+          "noMatchToast": "Normal dictation appended (no edit command matched)"
         }
       },
       "language": {
@@ -870,37 +917,43 @@
       "title": "About",
       "version": {
         "title": "Version",
-        "description": "Current version of Handy"
+        "description": "Current version of Handy+"
       },
       "whatsNewUpdates": {
         "label": "Show What's New",
-        "description": "Show release notes after Handy updates"
+        "description": "Show release notes after Handy+ updates"
       },
       "appDataDirectory": {
         "title": "App Data Directory",
-        "description": "Location where Handy stores its data"
+        "description": "Location where Handy+ stores its data"
       },
       "sourceCode": {
-        "title": "Source Code",
-        "description": "View source code and contribute",
-        "button": "View on GitHub"
+        "title": "Source Code (Handy+ by mozii)",
+        "description": "Engineered by mozii (alirezamozii/HandyPlus) — 100% upstream-compatible with cjpais/Handy",
+        "button": "Handy+ on GitHub",
+        "upstreamButton": "Upstream Handy"
       },
       "supportDevelopment": {
         "title": "Support Development",
-        "description": "Help us continue building Handy",
+        "description": "Help support open-source offline speech-to-text development",
         "button": "Donate"
       },
       "acknowledgments": {
         "title": "Acknowledgments",
         "ggml": {
-          "title": "ggml",
+          "title": "ggml & Upstream Handy",
           "description": "High-performance tensor library for on-device machine learning inference",
-          "details": "Handy's local speech-to-text is built on transcribe.cpp and ggml. Thanks to the amazing work by Georgi Gerganov and contributors."
+          "details": "Handy+ is engineered by mozii (github.com/alirezamozii/HandyPlus), building upon cjpais/Handy, transcribe.cpp, and ggml by Georgi Gerganov and contributors."
         }
       }
     }
   },
   "footer": {
+    "wakeWord": {
+      "armed": "Wake: {{count}} armed",
+      "triggered": "Triggered: {{word}}",
+      "noPhrases": "Wake: add a phrase"
+    },
     "checkingUpdates": "Checking for updates...",
     "updateAvailableShort": "Update available",
     "upToDate": "Up to date",
@@ -916,7 +969,7 @@
     "portableUpdateBrowseButton": "Open GitHub Releases"
   },
   "whatsNew": {
-    "title": "New in Handy v{{version}}"
+    "title": "New in Handy+ v{{version}}"
   },
   "common": {
     "playbackPosition": "Playback position",
@@ -966,11 +1019,11 @@
   },
   "appLanguage": {
     "title": "Application Language",
-    "description": "Change the language of the Handy interface"
+    "description": "Change the language of the Handy+ interface"
   },
   "theme": {
     "title": "Application Theme",
-    "description": "Choose whether Handy follows your system theme or stays light or dark",
+    "description": "Choose whether Handy+ follows your system theme or stays light or dark",
     "options": {
       "system": "System",
       "light": "Light",

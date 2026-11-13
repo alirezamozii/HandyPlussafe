@@ -52,6 +52,12 @@ pub trait VoiceActivityDetector: Send + Sync {
         None
     }
 
+    /// Flushes any uncommitted voiced frames held in the onset/prefill buffer
+    /// when recording stops so the first/last syllable is never clipped.
+    fn flush_tail(&mut self) -> Vec<f32> {
+        Vec::new()
+    }
+
     fn reset(&mut self) {}
 }
 

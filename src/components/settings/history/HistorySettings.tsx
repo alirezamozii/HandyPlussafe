@@ -368,7 +368,7 @@ export const HistorySettings: React.FC = () => {
             />
           </div>
         </div>
-        <div className="bg-background border border-line rounded-lg overflow-visible">
+        <div className="bg-surface border border-line rounded-xl overflow-visible shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
           {content}
         </div>
       </div>

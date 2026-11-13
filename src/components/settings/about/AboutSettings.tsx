@@ -68,13 +68,24 @@ export const AboutSettings: React.FC = () => {
           description={t("settings.about.sourceCode.description")}
           grouped={true}
         >
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => openUrl("https://github.com/cjpais/Handy")}
-          >
-            {t("settings.about.sourceCode.button")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() =>
+                openUrl("https://github.com/alirezamozii/HandyPlus")
+              }
+            >
+              {t("settings.about.sourceCode.button")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => openUrl("https://github.com/cjpais/Handy")}
+            >
+              {t("settings.about.sourceCode.upstreamButton")}
+            </Button>
+          </div>
         </SettingContainer>
 
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />

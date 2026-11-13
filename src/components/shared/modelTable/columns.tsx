@@ -23,10 +23,10 @@ export const isDense = (langs: string[]) =>
 /** The grade, speed and size columns: the same grid in heads and rows. */
 export const columnsClass = (langs: string[]) =>
   gradeMode(langs) === "overall"
-    ? "grid-cols-[44px_40px_52px] gap-x-[6px]"
+    ? "grid-cols-[58px_40px_52px] gap-x-[6px]"
     : isDense(langs)
       ? "grid-cols-[repeat(var(--n),26px)_36px_50px] gap-x-[3px]"
-      : "grid-cols-[repeat(var(--n),32px)_40px_52px] gap-x-[6px]";
+      : "grid-cols-[repeat(var(--n),58px)_40px_52px] gap-x-[6px]";
 
 export const columnsStyle = (langs: string[]) =>
   ({ "--n": langs.length }) as React.CSSProperties;
@@ -113,16 +113,18 @@ export const GradeTip: React.FC<{
       })}
     </span>
   );
+  const gradeLabelWithPct =
+    grade.accuracy != null ? `${grade.label} (${grade.accuracy}%)` : grade.label;
   return (
     <Tooltip
       title={
         one
           ? t(key(grade.letter !== "none" ? "gradeTitle" : "accuracyTitle"), {
               language: nameOf(langs[0]),
-              grade: grade.label,
+              grade: gradeLabelWithPct,
             })
           : t(key(grade.letter !== "none" ? "overallTitle" : "overall"), {
-              grade: grade.label,
+              grade: gradeLabelWithPct,
             })
       }
       text={
@@ -208,6 +210,7 @@ export const Values: React.FC<{
                 <GradeChip
                   letter={g.letter}
                   label={g.label}
+                  accuracy={g.accuracy}
                   dense={isDense(langs)}
                 />
               </span>
@@ -220,6 +223,7 @@ export const Values: React.FC<{
             <GradeChip
               letter={grading.overall(model).letter}
               label={grading.overall(model).label}
+              accuracy={grading.overall(model).accuracy}
             />
           </span>
         </GradeTip>

@@ -153,6 +153,23 @@ impl VoiceActivityDetector for SmoothedVad {
         })
     }
 
+    fn flush_tail(&mut self) -> Vec<f32> {
+        let has_unemitted_voiced = self
+            .frame_buffer
+            .iter()
+            .any(|frame| !frame.emitted && frame.voiced);
+        if !has_unemitted_voiced {
+            return Vec::new();
+        }
+        let mut rescued = Vec::new();
+        for buffered in self.frame_buffer.iter_mut().filter(|f| !f.emitted) {
+            rescued.extend_from_slice(&buffered.samples);
+            buffered.emitted = true;
+        }
+        self.onset_counter = 0;
+        rescued
+    }
+
     fn reset(&mut self) {
         self.inner_vad.reset();
         self.frame_buffer.clear();

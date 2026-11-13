@@ -32,6 +32,8 @@ export interface Grade {
   letter: GradeLetter;
   /** "A+", "B−"; "—" when the model doesn't speak it, "?" when unmeasured. */
   label: string;
+  /** International accuracy percentage (100 - WER%), e.g. 97 for 3% error. */
+  accuracy?: number;
   unsupported?: boolean;
 }
 
@@ -44,18 +46,31 @@ export const GRADE_CEILINGS = { A: 5, B: 10, C: 20, D: 30 } as const;
 // The package writes the minus as a hyphen; the design sets a real minus.
 const minus = (label: string) => label.replace("-", "−");
 
+const toAccuracyPercent = (error: number | undefined): number | undefined =>
+  error != null && Number.isFinite(error)
+    ? Math.max(1, Math.min(99, Math.round(100 - error)))
+    : undefined;
+
 export const gradeFor = (model: CatalogModel, language: string): Grade => {
   if (!modelMatchesLanguage(model, language))
     return { letter: "none", label: "—", unsupported: true };
   const grade = catalog.languageAccuracyGrade(model, language);
   if (!grade) return { letter: "none", label: "?" };
-  return { letter: grade.letter, label: minus(grade.label) };
+  return {
+    letter: grade.letter,
+    label: minus(grade.label),
+    accuracy: toAccuracyPercent(errorFor(model, language)),
+  };
 };
 
 /** The grade for an error in percent (an average over several languages). */
 export const gradeForError = (error: number): Grade => {
   const grade = accuracyGrade(error);
-  return { letter: grade.letter, label: minus(grade.label) };
+  return {
+    letter: grade.letter,
+    label: minus(grade.label),
+    accuracy: toAccuracyPercent(error),
+  };
 };
 
 /** Seconds after a 30-second dictation, on this machine's tier. */

@@ -585,70 +585,82 @@ impl TranscriptionCoordinator {
         let (tx, rx) = mpsc::channel();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let mut state = CoordinatorState::new();
+            let mut state = CoordinatorState::new();
 
-                loop {
-                    let cmd = if let Some(deadline) = state.grace_deadline() {
-                        match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                            Ok(cmd) => cmd,
-                            Err(mpsc::RecvTimeoutError::Timeout) => {
-                                let was_locked = state.is_recording_locked();
-                                if let Some(effect) = state.on_grace_expired() {
+            loop {
+                let cmd = if let Some(deadline) = state.grace_deadline() {
+                    match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+                        Ok(cmd) => Some(cmd),
+                        Err(mpsc::RecvTimeoutError::Timeout) => None,
+                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    }
+                } else {
+                    match rx.recv() {
+                        Ok(cmd) => Some(cmd),
+                        Err(_) => break,
+                    }
+                };
+
+                let step_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if let Some(cmd) = cmd {
+                        let was_locked = state.is_recording_locked();
+                        match cmd {
+                            Command::Input(input) => {
+                                // Hold durations are measured edge-to-edge via the
+                                // sender's stamp, so time spent blocked in a prior
+                                // effect (first-activation mic init) cannot turn a
+                                // tap into a hold (#2089).
+                                let now = input.received_at;
+                                if let Some(effect) = state.on_input(input, now) {
                                     run_effect(&app, &mut state, effect);
                                 }
-                                if !was_locked && state.is_recording_locked() {
-                                    emit_recording_phase(&app, RecordingPhase::Locked);
-                                }
-                                continue;
                             }
-                            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                            Command::Cancel {
+                                recording_was_active,
+                            } => {
+                                // A cancel while transcribing ends the take too.
+                                let busy = recording_was_active
+                                    || matches!(state.stage, Stage::Processing);
+                                state.on_cancel(recording_was_active);
+                                if busy {
+                                    emit_recording_phase(&app, RecordingPhase::Cancelled);
+                                }
+                            }
+                            Command::ProcessingFinished => {
+                                if let Some(effect) = state.on_processing_finished() {
+                                    run_effect(&app, &mut state, effect);
+                                }
+                            }
+                        }
+                        if !was_locked && state.is_recording_locked() {
+                            emit_recording_phase(&app, RecordingPhase::Locked);
                         }
                     } else {
-                        match rx.recv() {
-                            Ok(cmd) => cmd,
-                            Err(_) => break,
+                        let was_locked = state.is_recording_locked();
+                        if let Some(effect) = state.on_grace_expired() {
+                            run_effect(&app, &mut state, effect);
                         }
-                    };
+                        if !was_locked && state.is_recording_locked() {
+                            emit_recording_phase(&app, RecordingPhase::Locked);
+                        }
+                    }
+                }));
 
-                    let was_locked = state.is_recording_locked();
-                    match cmd {
-                        Command::Input(input) => {
-                            // Hold durations are measured edge-to-edge via the
-                            // sender's stamp, so time spent blocked in a prior
-                            // effect (first-activation mic init) cannot turn a
-                            // tap into a hold (#2089).
-                            let now = input.received_at;
-                            if let Some(effect) = state.on_input(input, now) {
-                                run_effect(&app, &mut state, effect);
-                            }
-                        }
-                        Command::Cancel {
-                            recording_was_active,
-                        } => {
-                            // A cancel while transcribing ends the take too.
-                            let busy =
-                                recording_was_active || matches!(state.stage, Stage::Processing);
-                            state.on_cancel(recording_was_active);
-                            if busy {
-                                emit_recording_phase(&app, RecordingPhase::Cancelled);
-                            }
-                        }
-                        Command::ProcessingFinished => {
-                            if let Some(effect) = state.on_processing_finished() {
-                                run_effect(&app, &mut state, effect);
-                            }
-                        }
-                    }
-                    if !was_locked && state.is_recording_locked() {
-                        emit_recording_phase(&app, RecordingPhase::Locked);
-                    }
+                if let Err(panic_payload) = step_result {
+                    let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                        (*s).to_string()
+                    } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "unknown panic payload".to_string()
+                    };
+                    error!(
+                        "Transcription coordinator recovered from panic ({msg}); resetting state to Idle (#2408)"
+                    );
+                    state = CoordinatorState::new();
                 }
-                debug!("Transcription coordinator exited");
-            }));
-            if let Err(e) = result {
-                error!("Transcription coordinator panicked: {e:?}");
             }
+            debug!("Transcription coordinator exited");
         });
 
         Self { tx }

@@ -1,5 +1,5 @@
 use crate::settings::{PostProcessApiFormat, PostProcessProvider};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,6 +7,55 @@ use std::collections::HashSet;
 use std::error::Error as StdError;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
+
+/// Resolves `env:VAR_NAME` or `$VAR_NAME` references from process environment variables (#483),
+/// and falls back to standard provider environment variables when the stored API key is empty.
+fn resolve_secret_or_env(raw: &str, provider_id: &str, is_api_key: bool) -> String {
+    let trimmed = raw.trim();
+    if let Some(var_name) = trimmed
+        .strip_prefix("env:")
+        .or_else(|| trimmed.strip_prefix('$'))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+    {
+        if let Ok(val) = std::env::var(var_name) {
+            if !val.trim().is_empty() {
+                return val.trim().to_string();
+            }
+        }
+        warn!(
+            "Environment variable '{}' referenced for provider '{}' is unset or empty",
+            var_name, provider_id
+        );
+        return String::new();
+    }
+
+    if !trimmed.is_empty() {
+        return trimmed.to_string();
+    }
+
+    if is_api_key {
+        let fallback_var = match provider_id {
+            "openai" => Some("OPENAI_API_KEY"),
+            "openrouter" => Some("OPENROUTER_API_KEY"),
+            "anthropic" => Some("ANTHROPIC_API_KEY"),
+            "groq" => Some("GROQ_API_KEY"),
+            "cerebras" => Some("CEREBRAS_API_KEY"),
+            "zai" => Some("ZAI_API_KEY"),
+            "custom" => Some("HANDY_CUSTOM_LLM_API_KEY"),
+            _ => None,
+        };
+        if let Some(var_name) = fallback_var {
+            if let Ok(val) = std::env::var(var_name) {
+                if !val.trim().is_empty() {
+                    return val.trim().to_string();
+                }
+            }
+        }
+    }
+
+    String::new()
+}
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -252,9 +301,10 @@ fn shared_client() -> Result<&'static reqwest::Client, String> {
 
 /// Create an HTTP client with provider-specific headers
 fn create_client(provider: &PostProcessProvider, api_key: &str) -> Result<ProviderClient, String> {
+    let resolved_key = resolve_secret_or_env(api_key, &provider.id, true);
     Ok(ProviderClient {
         client: shared_client()?,
-        headers: build_headers(provider, api_key)?,
+        headers: build_headers(provider, &resolved_key)?,
     })
 }
 
@@ -482,8 +532,10 @@ pub async fn send_chat_completion_with_schema(
         sanitized_url(response.url())
     );
 
-    // A 400/422 on a request carrying reasoning-disable fields is almost always
-    // the endpoint rejecting those fields — retry once without them.
+    // A 400/422 on a request carrying reasoning-disable fields means the endpoint
+    // rejected that spelling (#1809). Try alternative disable spellings (e.g.
+    // `thinking: {"type": "disabled"}` for DeepSeek/gateways) before falling back
+    // to a bare request with no reasoning parameters.
     if !status.is_success()
         && matches!(status.as_u16(), 400 | 422)
         && !request_body.reasoning.is_empty()
@@ -491,32 +543,55 @@ pub async fn send_chat_completion_with_schema(
         let error_text = response.text().await.unwrap_or_else(|e| {
             report_reqwest_error("Failed to read reasoning rejection response", &e)
         });
-        info!(
-            "Endpoint rejected request with reasoning disabled (status {}): {}. Retrying without reasoning fields",
-            status, error_text
-        );
 
-        request_body.reasoning = ReasoningParams::default();
-        response = client
-            .post(&url)
-            .json(&request_body)
-            .send()
-            .await
-            .map_err(|e| report_reqwest_error("HTTP retry failed", &e))?;
-        status = response.status();
-        debug!(
-            "Chat completion retry response received with status {} over {:?} from {}",
-            status,
-            response.version(),
-            sanitized_url(response.url())
-        );
+        let fallback_thinking = ReasoningParams {
+            thinking: Some(serde_json::json!({ "type": "disabled" })),
+            ..Default::default()
+        };
 
-        if status.is_success() {
-            info!(
-                "Retry without reasoning fields succeeded; '{}' (model '{}') will skip them from now on",
-                sanitized_url_for_log(base_url), model
+        if request_body.reasoning != fallback_thinking && provider.id == "custom" {
+            debug!(
+                "Endpoint rejected primary reasoning-disable spelling ({}); trying thinking.type=disabled",
+                status
             );
-            remember_rejection(key);
+            request_body.reasoning = fallback_thinking;
+            response = client
+                .post(&url)
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| report_reqwest_error("HTTP retry failed", &e))?;
+            status = response.status();
+        }
+
+        if !status.is_success() && matches!(status.as_u16(), 400 | 422) {
+            warn!(
+                "Endpoint rejected reasoning-disable parameters (status {}): {}. Retrying without reasoning fields (model thinking may remain active)",
+                status, error_text
+            );
+
+            request_body.reasoning = ReasoningParams::default();
+            response = client
+                .post(&url)
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| report_reqwest_error("HTTP retry failed", &e))?;
+            status = response.status();
+            debug!(
+                "Chat completion retry response received with status {} over {:?} from {}",
+                status,
+                response.version(),
+                sanitized_url(response.url())
+            );
+
+            if status.is_success() {
+                info!(
+                    "Retry without reasoning fields succeeded; '{}' (model '{}') will skip them from now on",
+                    sanitized_url_for_log(base_url), model
+                );
+                remember_rejection(key);
+            }
         }
     }
 

@@ -1,34 +1,68 @@
-# Handy
+# Handy+
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-alirezamozii%2FHandyPlus-%23D4FF00?style=for-the-badge&logo=github&logoColor=black)](https://github.com/alirezamozii/HandyPlus)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
-**A free, open source, and extensible speech-to-text application that works completely offline.**
+**A free, open source, offline speech-to-text & hands-free voice workstation — engineered by [mozii](https://github.com/alirezamozii/HandyPlus) on top of [cjpais/Handy](https://github.com/cjpais/Handy).**
 
-Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
+**Handy+** upgrades the cross-platform Tauri 2.x (Rust + React/TypeScript) desktop dictation engine with an **AMOLED Carbon-Black (`#000000`) & Higgsfield Electric Lime (`#D4FF00`)** interface, **Hands-Free Wake-Word Activation**, **Jarvis-Style Voice Editing & Range Replacement**, **International Model Accuracy (`%` + Letter Grade)**, **Zero-Clipped-Words VAD Tail Flushing**, and a comprehensive suite of upstream reliability fixes — while remaining 100% merge-compatible with upstream `cjpais/Handy`.
 
-## Why Handy?
+---
 
-Handy was created to fill the gap for a truly open source, extensible speech-to-text tool. As stated on [handy.computer](https://handy.computer):
+## What's New in Handy+ (by mozii)
 
-- **Free**: Accessibility tooling belongs in everyone's hands, not behind a paywall
-- **Open Source**: Together we can build further. Extend Handy for yourself and contribute to something bigger
-- **Private**: Your voice stays on your computer. Get transcriptions without sending audio to the cloud
-- **Simple**: One tool, one job. Transcribe what you say and put it into a text box
+### 1. Signature AMOLED Black & Higgsfield Electric Lime (`#D4FF00`) UI/UX
+- **True AMOLED Carbon-Black (`#000000`)** canvas with obsidian elevated cards (`#0A0A0A` / `#121212`) and high-contrast **Higgsfield Electric Lime (`#D4FF00`)** interactive states.
+- **Preserved Original Handy Iconography**: Keeps the authentic `cjpais/Handy` hand mark and wordmark SVG geometry, styled with electric lime fill, dark outline stroke, and crisp `#050505` dark ink on active sidebar pills.
+- **International Model Accuracy Display**: Every speech recognition model displays both its letter grade (`A+`, `A`, `B+`) and its explicit **international accuracy percentage (`97%`, `95%`, etc. = `100 - WER%`)** so users worldwide immediately understand model quality without needing familiarity with US academic grading.
+
+### 2. Hands-Free Wake-Word Activation
+- Trigger dictation completely hands-free by speaking any configurable trigger phrase (default: `"hey handy"`, `"handy"`, `"start dictation"`, `"ok handy"`).
+- Uses unicode-aware word-boundary matching (`src/lib/wakeWord/matcher.ts`) so accidental substrings inside normal words never false-trigger.
+- Includes a live **Test Wake Phrase** simulator and status badge right in **Settings → General**.
+
+### 3. Hands-Free Voice Editing & Range Replacement ("Jarvis Mode")
+Edit your dictated text by voice without touching the keyboard (`src/lib/voiceEdit/engine.ts` & `src-tauri/src/voice_edit.rs`):
+- **Undo / Scratch That**: Say `"undo"`, `"undo that"`, `"scratch that"`, `"remove all"`, or `"clear all"` to revert or clear the last dictation.
+- **Remove Word or Phrase**: Say `"remove <word/phrase>"` or `"delete <word/phrase>"` to strip specific words cleanly while normalizing spacing and punctuation.
+- **Targeted Replacement**: Say `"replace <old> with <new>"` or `"change <old> to <new>"` to swap words or phrases in-place.
+- **Span / Range Replacement ("From X to Y")**: Say `"replace from <start_word> to <end_word> with <replacement>"` (or `"delete from <start_word> to <end_word>"`) to select everything from `<start_word>` through `<end_word>` inclusive and replace or remove the entire span at once.
+- Includes an interactive **Voice Edit & Range Replace Studio** in **Settings → General** to test voice editing commands live.
+
+### 4. Zero-Clipped-Words Audio Pipeline
+- **VAD Tail Flush (`SmoothedVad::flush_tail`)**: Flushes uncommitted speech frames in the Silero VAD onset counter and hangover prefill buffer when recording ends (`CaptureSink::finish()`), preventing clipped short words or trailing syllables.
+- **250 ms Default Tail Recording Buffer**: Increases default `extra_recording_buffer_ms` from `0 ms` to `250 ms` so fast key-releases never chop the final spoken word.
+
+### 5. Upstream Bug Fixes & Reliability Hardening Included
+- **#2480 (Offline / Headless Settings Migration)**: Preserves `onboarding_completed: true` whenever `selected_model` is non-empty so manual or headless `settings_store.json` configurations never get reset to the onboarding wizard.
+- **#2408 (Transcription Coordinator Panic Recovery)**: Extracts human-readable panic payloads (`&str` / `String`) and keeps the coordinator thread alive across panics.
+- **#1005 (`--no-tray` / Disabled Tray Exit)**: Closing the main window when the system tray icon is hidden or `--no-tray` is active cleanly exits the process instead of leaving a headless background process.
+- **#642 (Mute-While-Recording Ordering)**: Applies system audio mute immediately before microphone capture when audio feedback is off, and unmutes only after `stop_recording()` finishes draining captured samples.
+- **#502 / #1366 (Clipboard Restoration Race)**: Increases default `paste_delay_after_ms` from `50 ms` to `150 ms` so slower target apps read the new transcript before clipboard restoration.
+- **#483 (Environment Variable API Keys)**: Supports `env:VAR_NAME` and `$VAR_NAME` syntax plus automatic environment fallback (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`) for LLM post-processing.
+- **#1809 (Universal Reasoning Disable Fallback)**: Cascades `reasoning_effort: "none"` → `thinking: {"type": "disabled"}` → standard request for Zhipu GLM, DeepSeek, Qwen, and OpenAI-compatible endpoints.
+- **#1261 / #1310 (`<transcript>` Tag Handling)**: Cleans empty `<transcript></transcript>` blocks from system prompts and wraps structured-output user inputs in `<transcript>` tags to prevent prompt injection.
+- **#1262 / #1311 (Non-Destructive History Settings)**: Changing history limit or retention period in Settings no longer immediately deletes existing recordings on keystroke.
+- **#1841 (Vulkan Cooperative Matrix Guard)**: Sets `GGML_VK_DISABLE_COOPMAT=1` by default (opt out via `HANDY_KEEP_VK_COOPMAT=1`) to prevent GPU driver hangs and gibberish output on Windows/Linux Vulkan devices.
+- **Asset Protocol Scope Hardening**: Restricts `assetProtocol.scope.allow` in `tauri.conf.json` to `$APPDATA/recordings/**` and `$APPLOCALDATA/recordings/**`.
+
+---
 
 ## How It Works
 
-1. **Press** a configurable keyboard shortcut: hold it to record and release to stop, or tap it to toggle recording on and off (Hold-only and Toggle-only modes are also available)
-2. **Speak** your words while the shortcut is active
-3. **Release** and Handy processes your speech using Whisper
-4. **Get** your transcribed text pasted directly into whatever app you're using
+1. **Press** a configurable keyboard shortcut — or **say your wake phrase** (`"hey handy"`) in Hands-Free mode
+2. **Speak** your words or say a **Voice Edit command** (`"replace from X to Y with Z"`, `"remove <word>"`, `"undo"`)
+3. **Release** (or pause) and Handy+ processes your speech locally using Whisper, Parakeet, SenseVoice, or Moonshine
+4. **Get** your transcribed or voice-edited text pasted directly into the active application
 
 The process is entirely local:
 
-- Silence is filtered using VAD (Voice Activity Detection) with Silero
+- Silence is filtered using VAD (Voice Activity Detection) with Silero + `flush_tail()`
 - Transcription uses your choice of models:
   - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
   - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
 - Works on Windows, macOS, and Linux
+
 
 ## Quick Start
 

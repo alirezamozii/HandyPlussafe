@@ -389,6 +389,53 @@
           "push_to_talk": "Nahrává, dokud držíte zkratku",
           "toggle": "Klepněte na zkratku pro zahájení nahrávání, klepněte znovu pro zastavení"
         }
+      },
+      "wakeWord": {
+        "groupTitle": "Voice Activation",
+        "toggle": {
+          "title": "Wake-Word Hands-Free Mode",
+          "description": "Listen continuously for your trigger phrases to start dictation without pressing a key."
+        },
+        "phrases": {
+          "title": "Trigger Words & Phrases",
+          "description": "Say any configured phrase to start dictating automatically. Boundary matching ignores accidental substrings.",
+          "placeholder": "Add wake phrase (e.g. computer)",
+          "add": "Add",
+          "remove": "Remove wake phrase {{word}}",
+          "duplicate": "\"{{word}}\" is already in your wake-word list",
+          "limitReached": "You can add up to {{max}} wake phrases",
+          "resetTooltip": "Restore default wake phrases"
+        },
+        "status": {
+          "off": "Off",
+          "armed": "Armed",
+          "triggered": "Triggered: {{word}}",
+          "noWords": "Add a phrase",
+          "unavailable": "Mic unavailable"
+        },
+        "test": {
+          "title": "Test Wake Phrase",
+          "description": "Simulate a spoken sentence containing one of your wake words to verify hands-free activation.",
+          "placeholder": "e.g. {{sample}} write down my notes",
+          "button": "Test Phrase",
+          "noMatch": "Phrase didn't match any configured wake word"
+        },
+        "voiceEdit": {
+          "title": "Hands-Free Voice Editing (Jarvis Mode)",
+          "description": "Say commands like \"undo\", \"remove <word>\", \"replace <old> with <new>\", or \"replace from <start> to <end> with <new>\" to edit your last dictation.",
+          "studioTitle": "Voice Edit & Range Replace Studio",
+          "studioDescription": "Test hands-free voice editing commands against a live draft transcript.",
+          "draftLabel": "Active Draft Transcript",
+          "commandPlaceholder": "e.g. replace from old cloud to way too slow with local Rust engine",
+          "runButton": "Apply Voice Edit",
+          "resetButton": "Reset Draft",
+          "presetReplace": "Replace word",
+          "presetRange": "Replace from X to Y",
+          "presetRemove": "Remove word",
+          "presetUndo": "Undo last edit",
+          "appliedToast": "Voice edit applied ({{kind}})",
+          "noMatchToast": "Normal dictation appended (no edit command matched)"
+        }
       }
     },
     "models": {
@@ -883,7 +930,8 @@
       "sourceCode": {
         "title": "Zdrojový kód",
         "description": "Zobrazit zdrojový kód a přispět",
-        "button": "Zobrazit na GitHubu"
+        "button": "Zobrazit na GitHubu",
+        "upstreamButton": "Upstream Handy"
       },
       "supportDevelopment": {
         "title": "Podpořte vývoj",
@@ -913,7 +961,12 @@
     "portableUpdateMessage": "Přenosné instalace nelze aktualizovat automaticky. Níže stáhněte instalátor pro svůj systém, spusťte jej a nainstalujte do stejné složky — vaše složka Data/ (nastavení, modely, nahrávky) zůstane na místě.",
     "portableUpdateButton": "Stáhnout instalátor",
     "portableUpdateBrowseMessage": "Přenosné instalace nelze aktualizovat automaticky. Stáhněte nejnovější verzi pro svůj systém z GitHub Releases a nainstalujte ji do stejné složky — vaše složka Data/ (nastavení, modely, nahrávky) zůstane na místě.",
-    "portableUpdateBrowseButton": "Otevřít GitHub Releases"
+    "portableUpdateBrowseButton": "Otevřít GitHub Releases",
+    "wakeWord": {
+      "armed": "Wake: {{count}} armed",
+      "triggered": "Triggered: {{word}}",
+      "noPhrases": "Wake: add a phrase"
+    }
   },
   "whatsNew": {
     "title": "Novinky v Handy v{{version}}"

@@ -4,8 +4,8 @@
   --s-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   /* Near-opaque app surface (theme.css --color-background at 98%). Auto-flips
      light/dark with --color-background, so no dark-mode override is needed. */
-  --s-surface: color-mix(in srgb, var(--color-background) 98%, transparent);
-  /* Accent = logo pink; flips automatically via --color-logo-primary. */
+  --s-surface: color-mix(in srgb, var(--color-surface) 98%, transparent);
+  /* Accent = Higgsfield lemon green; flips automatically via --color-logo-primary. */
   --s-accent: var(--color-logo-primary);
   /* The rest come from theme.css, which already follows the theme setting. */
   --s-accent-soft: color-mix(
@@ -44,6 +44,9 @@
 .ov-stage {
   position: fixed;
   inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  padding-bottom: 14px;
   display: flex;
   justify-content: center; /* horizontal centering, kept for both forms */
   align-items: flex-end; /* bottom placement: flush to the bottom edge */
@@ -109,8 +112,11 @@
   flex: none; /* hold our own width; never let the stage flex shrink the card */
   transform-origin: bottom center;
   background: var(--s-surface);
-  border: 1px solid var(--s-border);
-  /* Flat: no drop shadow, no backdrop blur/saturate (was a glassy gradient look). */
+  border: 1px solid color-mix(in srgb, var(--s-accent) 28%, var(--s-border));
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.72),
+    0 0 24px color-mix(in srgb, var(--s-accent) 16%, transparent);
+  pointer-events: auto;
   /* pop-in plays on mount; morph (width/radius) is a transition */
   animation: scard-pop 460ms cubic-bezier(0.22, 1, 0.36, 1);
   transition:

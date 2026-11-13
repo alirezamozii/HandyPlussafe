@@ -36,6 +36,9 @@ import { commands } from "@/bindings";
 import { deleteRetiredModel } from "@/lib/models/retired";
 import { NoticePanel } from "@/components/notices/NoticePanel";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
+import { useWakeWordController } from "./hooks/useWakeWordController";
+import { isWebPreviewRuntime } from "./lib/tauriWebFallback";
+import RecordingOverlay from "./overlay/RecordingOverlay";
 
 // flow is first-run onboarding; the rest are single screens for returning users.
 type OnboardingStep =
@@ -86,6 +89,7 @@ function App() {
     useState<SidebarSection>("general");
   const showHistory = useCallback(() => setCurrentSection("history"), []);
   const { settings, updateSetting } = useSettings();
+  useWakeWordController(onboardingStep === "done");
   const direction = getLanguageDirection(i18n.language);
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
@@ -360,6 +364,9 @@ function App() {
     <>
       {content}
       <NoticePanel />
+      {isWebPreviewRuntime() && onboardingStep === "done" && (
+        <RecordingOverlay />
+      )}
     </>
   );
 }

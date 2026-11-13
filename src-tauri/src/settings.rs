@@ -546,7 +546,7 @@ pub struct AppSettings {
         deserialize_with = "deserialize_transcribe_gpu_device"
     )]
     pub transcribe_gpu_device: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_extra_recording_buffer_ms")]
     pub extra_recording_buffer_ms: u64,
     #[serde(default = "default_vad_enabled")]
     pub vad_enabled: bool,
@@ -569,6 +569,12 @@ pub struct AppSettings {
     /// `overlay_position` (position `none` → style `None`).
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
+    #[serde(default = "default_wake_word_enabled")]
+    pub wake_word_enabled: bool,
+    #[serde(default = "default_wake_words")]
+    pub wake_words: Vec<String>,
+    #[serde(default = "default_voice_edit_enabled")]
+    pub voice_edit_enabled: bool,
 }
 
 fn default_model() -> String {
@@ -674,7 +680,15 @@ fn default_paste_delay_ms() -> u64 {
 }
 
 fn default_paste_delay_after_ms() -> u64 {
-    60
+    150
+}
+
+fn default_extra_recording_buffer_ms() -> u64 {
+    250
+}
+
+fn default_voice_edit_enabled() -> bool {
+    true
 }
 
 fn default_auto_submit() -> bool {
@@ -698,7 +712,15 @@ fn default_sound_theme() -> SoundTheme {
 }
 
 fn default_theme() -> Theme {
-    Theme::System
+    Theme::Dark
+}
+
+fn default_wake_word_enabled() -> bool {
+    false
+}
+
+fn default_wake_words() -> Vec<String> {
+    vec!["hey handy".to_string(), "handy start".to_string()]
 }
 
 fn default_post_process_enabled() -> bool {
@@ -1060,13 +1082,16 @@ pub fn get_default_settings() -> AppSettings {
         chinese_script: default_chinese_script(),
         transcribe_accelerator: TranscribeAcceleratorSetting::default(),
         transcribe_gpu_device: default_transcribe_gpu_device(),
-        extra_recording_buffer_ms: 0,
+        extra_recording_buffer_ms: default_extra_recording_buffer_ms(),
         vad_enabled: default_vad_enabled(),
         vad_backend: VadBackend::default(),
         long_form_chunking: default_long_form_chunking(),
         language_detection: LanguageDetectionMode::default(),
         language_detection_window_secs: default_language_detection_window_secs(),
         overlay_style: default_overlay_style(),
+        wake_word_enabled: default_wake_word_enabled(),
+        wake_words: default_wake_words(),
+        voice_edit_enabled: default_voice_edit_enabled(),
     }
 }
 
@@ -1211,10 +1236,12 @@ fn apply_settings_migrations(
     let mut updated = false;
 
     // One-time onboarding migration: users with an explicit selected model have
-    // already made it through model selection. Users who merely have compatible
-    // files on disk should still see onboarding.
-    if settings_value.get("onboarding_completed").is_none() {
-        settings.onboarding_completed = !settings.selected_model.is_empty();
+    // already made it through model selection. Also protects hand-edited or
+    // offline-deployed settings_store.json files (#2480).
+    if settings_value.get("onboarding_completed").is_none()
+        || (!settings.onboarding_completed && !settings.selected_model.trim().is_empty())
+    {
+        settings.onboarding_completed = !settings.selected_model.trim().is_empty();
         updated = true;
     }
 

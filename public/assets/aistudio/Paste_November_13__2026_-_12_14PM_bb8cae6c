@@ -1,0 +1,2156 @@
+/plan mode wirte teh full fied plan and inmalstion land adn fix paln tasl list adn imtoveoment plan all togterhfirs and read code adn fugure out all tadn then wiete all doc we need to start working onthis proejct tehn afte rall issue fidn out adn thubj about the ebst fix adn astfu aslo thinsg that i didn say but you thing is siue adro canbe improced soudl be ixed adn planed for and fix all and imvoemnt us to max level of disning adn anitmion adn ui ux perofsion adn enginering fornt and bacl end adn full sack adn engiering pip lien adn teh speed and most imptionay test for all stfu and wall stfu work adn guthub cianfgure test adn build adn relse adn tgenn rewete the remde for hadny + adn te it that its wfor form orgimail hadny adn ink it and also say that its opsniited handt from mozii make all styf grate adn well made adn best practus adn wll code dliek pro nt liek ai slop adn do all sryf i ask for [BUG] Handy's process stays open in the background.
+ #1005
+Open
+Open
+[BUG] Handy's process stays open in the background.
+#1005
+Description
+@wyntrson
+wyntrson
+opened on Mar 11
+Bug Description
+Even when it's the tray icon setting is toggled off, After closing the app doesn't completely shut down And there's still the process can be found in the background apps. In short, the app doesn't close down unless you go to processes and click end task. Usually toggling off tray icon means shutdown the app on closing the window.
+
+System Information
+0.7.10
+
+Operating System:
+
+Windows 11
+
+CPU:
+
+Intell 12400F
+
+GPU:
+
+NVIDIA RTX 4080
+
+Logs
+Image
+Reacted by Raman Varabets and robot3498712
+Activity
+
+wyntrson
+added 
+bug
+Something isn't working
+ on Mar 11
+cjpais commented on Mar 12
+@cjpais
+cjpais
+on Mar 12
+Owner
+I want to think about this a bit more. I kind of agree this is a problem, but I believe I know people also wanting this behavior so I'm not really sure what the best solution is here.
+
+wyntrson commented on Mar 12
+@wyntrson
+wyntrson
+on Mar 12
+Author
+The best way is to add an option like close to tray or minimize to tray but then if the tray icon is toggled off minimize has to minimize and close has to close.
+
+This is how Spotify has it like many other apps: Close button should minimize.
+Image
+
+Reacted by Raman Varabets and robot3498712
+cjpais commented on Mar 12
+@cjpais
+cjpais
+on Mar 12
+Owner
+I see. I really hate when adding new features => more features. Kinda wish I never included this option to begin with.
+
+
+DylanBricar
+added a commit that references this issue on Mar 21
+fix: pre-existing bugs + upstream issues cjpais#1005, cjpais#55, cjpa…
+
+Verified
+6a407bd
+philippgille commented on Apr 4
+@philippgille
+philippgille
+on Apr 4
+Kinda wish I never included this option to begin with.
+
+With the version still pre 1.0 I think it would be fine to remove it. (You mean the option to not show a tray icon, right?)
+
+Reacted by Kubilay Kocak
+cjpais commented on Apr 4
+@cjpais
+cjpais
+on Apr 4
+Owner
+@philippgille yeah, basically not giving the option to disable it, or moving it out of the UI
+
+koobs commented on Apr 8
+@koobs
+koobs
+on Apr 8
+The underlying root cause of the impedence mismatch here is:
+
+a) the default 'handy is in a tray icon' behaviour. This is understandable as handy wants to get out of the way, sits in the background, and has keyboard shortcuts as its primary invocation method.
+b) handy's settings is the current "main window".
+
+I'm +1 on show tray icon option removal (at least from the Windows perspective). I read up on the commits that introduced the option, and it seemed primarily related to CLI and/or !Windows usage originally (forgive me if wrong). If thats the case, might a more refined version be to remove the option on Windows, leaving the tray option in for CLI/!Windows, if it is indeed useful there and doesnt cause UX issues like here?
+
+FWIW, the 'standard/familiar' UX on windows is:
+
+Main window (which handy doesnt really have at present) with taskbar icon. PS: I could imagine a cool little dockable 'main window' in Handy's future.
+Option to minimize to tray. Sometimes a bonus Close to tray (either seperately or combined Minimise/Close to tray option). This allows a user to opt-in to a program living in the tray.
+An open minimized option. This launches the app into the tray when (2) is enabled. This is already Handy's Launch hidden option.
+Tray icon single click = do 'main' thing. Currently handy just opens context menu (not quite right, but not terrible either).
+The best/most official current info for system tray behaviour on Windows lives here, and it's a good read:
+
+https://learn.microsoft.com/en-us/windows/win32/uxguide/winenv-notification
+
+Particular standout snippets and sections are:
+
+Section: Is this the right user interface?
+Is the icon primarily to launch a program or access its features or settings quickly? If so, use the Start menu to launch programs instead. The notification area isn't intended for quick program or command access
+If Handy defaulted to taskbar only, and had an option to minimize to tray, and an option to open minimized (which it has already), thats what I'd use/set, which would match the current default behaviour, but wouldnt need the show tray icon option. This setup would also leave the option open for Handy to acquire a main window/dialog later that wasn't settings.
+
+Edit: I just tested (for the first time), opening Handy settings from tray:
+
+A taskbar icon is created
+Minimising minimises the window, taskbar icon remains
+Closing the window, closes to tray (taskbar icon disappears
+My theory was both minimize and close would behave the same.
+
+This means Handy currently has an implicit (without an option) "close to tray" i-live-in-the-background-in-the-tray default option/behaviour, again totally understandable and goes to my original impedence mismatch opening.
+
+robot3498712 commented on May 6
+@robot3498712
+robot3498712
+on May 6
+On a related note: the task icon is too transparent in my case, since I use a black taskbar. It would be better to not do that and instead use the default branding with pink icon background.
+I.e. the problem is that I failed to register the icon at all, since it effectively was invisible to the eye; had to find the thing by mousing over the approximate area and then it popped into perception.
+
+OS: Windows 11
+
+cjpais commented on May 7
+@cjpais
+cjpais
+on May 7
+Owner
+I think we will let people pick what color they want for Windows @robot3498712
+
+Reacted by robot3498712
+
+cjpais
+added 
+platform: windows
+Issues related to the Windows platform
+ on Aug 1
+vscg commented on Aug 7
+@vscg
+vscg
+on Aug 7
+Contributor
+From what I know, currently we have two contrasting icons for idle and recording/transcribing modes. If we go with giving the option to pick colors, when same contrast issues appear when using single a color, there might be a request for different colors on different modes, then we have multiple color pickers instead of one which. if in future its decided that transcribing needs a different indicator then this might be heading towards 3 color pickers.
+My suggestion is to use pink fill in all icons as that's the app color. I don't think any background would contrast with pink, except if user has same tone pink taskbar or bg(for mac), which is very rare case.
+
+[BUG] muting the system audio has delay during recording
+ #642
+Open
+Open
+[BUG] muting the system audio has delay during recording
+#642
+Description
+@edwinencomienda
+edwinencomienda
+opened on Jan 21
+Bug Description
+
+When recording or dictating, the mute system audio feature has a slight delay that feels a bit off. If you try WhiprFlow it's instant.
+
+System Information
+App Version:
+
+0.7.0
+
+Operating System:
+
+macOS Tahoe
+Version 26.2
+
+CPU:
+
+Apple M1 Max
+
+GPU:
+
+Built-In
+
+Reacted by Adrian Lansdown, Nikhil Verma and Stefanie J.
+Activity
+
+edwinencomienda
+added 
+bug
+Something isn't working
+ on Jan 21
+cjpais commented on Feb 1
+@cjpais
+cjpais
+on Feb 1
+Owner
+do you have 'audio feedback' also enabled? there's definitely a delay when that is there, otherwise it would mute the audio feedback too
+
+we probably should evaluate the code path for if audio feedback is disabled and make sure it runs as fast as possible
+
+zhukovgeorge commented on Feb 19
+@zhukovgeorge
+zhukovgeorge
+on Feb 19
+@edwinencomienda @cjpais
+What is your average delay between pressing record and being able to start speaking?
+
+On my machine, there is ~5 seconds of latency before audio is actually captured.
+Additionally, the visual input indicator is not very sensitive it only reacts when I’m very close to the microphone, which makes it unclear when it’s safe to start talking.
+
+Environment
+OS: Windows 11 Pro (Build 26200)
+Architecture: x64
+CPU: Intel (Family 6 Model 141)
+RAM: 32 GB
+Machine: Dell Precision 5760
+Virtualization: Hyper-V enabled
+Settings
+settings screenshot
+
+cjpais commented on Feb 20
+@cjpais
+cjpais
+on Feb 20
+Owner
+@zhukovgeorge on macos it's less than 500ms for me, I did just get a windows machine yesterday and it's very long, maybe 3 seconds. We need to fix this.
+
+
+DylanBricar
+added a commit that references this issue on Mar 21
+fix: address upstream issues cjpais#502, cjpais#1104, cjpais#642
+
+Verified
+c7b9b51
+
+newideas99
+mentioned this on Jun 11
+feat: 'Volume While Recording' slider — duck audio instead of hard-muting (works on USB interfaces) #1503
+
+cjpais
+added 
+platform: windows
+Issues related to the Windows platform
+ 
+platform: macOS
+ on Aug 1
+
+incognitojam
+mentioned this on Aug 12
+feat: add configurable macOS audio ducking incognitojam/Handy#3
+adrian-rpf commented on Sep 16
+@adrian-rpf
+adrian-rpf
+on Sep 16
+I also experienced this on my MacBook M4 Pro - 14 inch - 24GB Memory - Nov 2024.
+
+Handy is so good this is one of the most annoying bugs when compared to Whispr.
+
+cjpais commented on Sep 16
+@cjpais
+cjpais
+on Sep 16
+Owner
+@adrian-rpf which microphone are you using?
+
+adrian-rpf commented on Sep 16
+@adrian-rpf
+adrian-rpf
+on Sep 16
+@cjpais normally I'm using my builtin macbook pro microphone.
+I've also just tested it with out external USB mic, monitor mic, and using the system Default input (which is the build in macbook mic)
+
+Tested on v0.9.6
+MacOS Golden Gate 27.0
+
+cjpais commented on Sep 17
+@cjpais
+cjpais
+on Sep 17
+Owner
+ty @adrian-rpf are you able to provide a log as well? about > log directory
+
+NikhilVerma commented on Sep 24
+@NikhilVerma
+NikhilVerma
+on Sep 24
+Yeah I just noticed this too and turning off "Mute While Recording" option makes it faster. However I still need to wait around 1s or so before I speak, otherwise the first words of my sentences are gone
+
+Pifan07 commented on Sep 29
+@Pifan07
+Pifan07
+on Sep 29
+I am experiencing the same issue on Windows 11: when the "Mute While Recording" option is enabled, the first one or two spoken words, for example, from a YouTube video, still end up in the transcript.
+
+A look at the code suggests the cause lies in the sequence of operations within TranscribeAction::start (src-tauri/src/actions.rs):
+
+Recording begins immediately (samples are captured from this point on).
+Waiting for the first microphone samples (readiness).
+play_feedback_sound_blocking(Start) – blocks until the signal tone finishes.
+apply_mute() is called only after that.
+Consequently, anything occurring between steps 1 and 4 (microphone initialization + the duration of the signal tone) is recorded without muting.
+
+A similar gap exists when stopping: remove_mute() is called in stop() before rm.stop_recording() executes in the asynchronous task; this means audio at the end of the recording can also be captured unintentionally.
+
+Proposed solution:
+
+Mute immediately upon pressing the keyboard shortcut, before opening the microphone stream (the start signal tone could still be played or skipped while muted, as the microphone readiness signal is less critical when muted).
+Unmute only after stop_recording() has returned the samples.
+Optionally discard the first ~150 ms of samples when muted to compensate for output buffer latency. If this were implemented as an optional setting ("Instant mute via keyboard shortcut"), the problem would already be solved. I would be happy to test a build or submit a pull request (PR), if you accept them.
+Reacted by Santiago Quiss
+cjpais commented on Sep 29
+@cjpais
+cjpais
+on Sep 29
+Owner
+@Pifan07 please submit a pr
+
+
+Pifan07
+mentioned this on Sep 29
+fix: add option to mute immediately so background audio isn't recorded #2168
+
+severin12am
+added a commit that references this issue on Sep 29
+fix: mute system audio when recording starts, and report a dead mic s…
+
+fc12b07
+
+qqrm
+mentioned this on Oct 2
+feat: pause playing media while recording via SMTC (Windows) qqrm/Handy#1
+Add a comment
+new Comment
+Markdown input: edit mode selected.
+Write
+Preview
+[BUG] Handy doesn't launch due to illegal instruction
+ #554
+Open
+mylendad/Handy
+#1
+Open
+[BUG] Handy doesn't launch due to illegal instruction
+#554
+mylendad/Handy
+#1
+Description
+@Alexis-Loskoutoff
+Alexis-Loskoutoff
+opened on Jan 8
+Hey ! First thanks for your work and your time !
+
+Bug Description
+If i click in gnome launcher, nothing happens and in terminal :
+
+$ handy
+Instruction non permise    (core dumped)handy
+which mean instruction not allowed in french
+
+I tried to see which instruction is problematic with gdb
+
+$ gdb /usr/bin/handy
+(gdb) run
+Starting program: /usr/bin/handy 
+Downloading 57.18 K separate debug info for system-supplied DSO at 0x7ffff7fc3000
+[...]                                                                           
+Downloading 47.56 K separate debug info for /home/alexis/.cache/debuginfod_client/37c15b6972212b049706e132d858fdf8a48d24cd/debuginfo
+[New Thread 0x7fffdfbff680 (LWP 14114)]                                                                                                                                                                             
+
+Thread 1 "handy" received signal SIGILL, Illegal instruction.
+0x0000555556acaffc in ?? ()
+(gdb) bt
+#0  0x0000555556acaffc in ?? ()
+#1  0x00007fffef0106e4 in call_init (argc=1, argv=0x7fffffffddc8, env=<optimized out>) at ../csu/libc-start.c:145
+#2  __libc_start_main_impl (main=0x555555dde6a0, argc=1, argv=0x7fffffffddc8, init=<optimized out>, fini=<optimized out>, rtld_fini=<optimized out>, stack_end=0x7fffffffddb8) at ../csu/libc-start.c:347
+#3  0x0000555555dde3e5 in ?? ()
+(gdb) info registers
+rax            0x0                 0
+rbx            0x0                 0
+rcx            0x555557d43960      93825034107232
+rdx            0x7fffffffddd8      140737488346584
+rsi            0x7fffffffddc8      140737488346568
+rdi            0x555556a58550      93825014269264
+rbp            0x7fffffffdda0      0x7fffffffdda0
+rsp            0x7fffffffdd40      0x7fffffffdd40
+r8             0x7fffef1f6680      140737205200512
+r9             0x555558120fd0      93825038159824
+r10            0x4                 4
+r11            0xfffffffffffff950  -1712
+r12            0x7fffffffddc8      140737488346568
+r13            0x1                 1
+r14            0x7ffff7ffd000      140737354125312
+r15            0x555557d43968      93825034107240
+rip            0x555556acaffc      0x555556acaffc
+eflags         0x10202             [ IF RF ]
+cs             0x33                51
+ss             0x2b                43
+ds             0x0                 0
+es             0x0                 0
+fs             0x0                 0
+gs             0x0                 0
+fs_base        0x7fffe888d700      140737094670080
+gs_base        0x0                 0
+(gdb) x/10i $rip
+=> 0x555556acaffc:	vpxor  %xmm0,%xmm0,%xmm0
+   0x555556acb000:	lea    0x1609579(%rip),%rsi        # 0x5555580d4580
+   0x555556acb007:	mov    %rsp,%rbp
+   0x555556acb00a:	push   %r12
+   0x555556acb00c:	lea    0x131f6ed(%rip),%r12        # 0x555557dea700
+   0x555556acb013:	push   %rbx
+   0x555556acb014:	mov    %r12,%rdx
+   0x555556acb017:	lea    0x16094e2(%rip),%rbx        # 0x5555580d4500
+   0x555556acb01e:	vmovdqa %ymm0,0x160955a(%rip)        # 0x5555580d4580
+   0x555556acb026:	vpxor  %xmm0,%xmm0,%xmm0
+System Information
+App Version:
+
+0.6.10
+Downloaded the latest release Handy-0.6.10-1.x86_64.rmp and installed it with dnf install
+
+Operating System:
+
+$ cat /etc/os-release
+NAME="Fedora Linux"
+VERSION="43 (Workstation Edition)"
+RELEASE_TYPE=stable
+ID=fedora
+VERSION_ID=43
+VERSION_CODENAME=""
+PRETTY_NAME="Fedora Linux 43 (Workstation Edition)"
+ANSI_COLOR="0;38;2;60;110;180"
+LOGO=fedora-logo-icon
+CPE_NAME="cpe:/o:fedoraproject:fedora:43"
+DEFAULT_HOSTNAME="fedora"
+HOME_URL="https://fedoraproject.org/"
+DOCUMENTATION_URL="https://docs.fedoraproject.org/en-US/fedora/f43/"
+SUPPORT_URL="https://ask.fedoraproject.org/"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Fedora"
+REDHAT_BUGZILLA_PRODUCT_VERSION=43
+REDHAT_SUPPORT_PRODUCT="Fedora"
+REDHAT_SUPPORT_PRODUCT_VERSION=43
+SUPPORT_END=2026-12-02
+VARIANT="Workstation Edition"
+VARIANT_ID=workstation
+CPU:
+
+$ lscpu
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             36 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      8
+  On-line CPU(s) list:       0-7
+Vendor ID:                   GenuineIntel
+  Model name:                Intel(R) Core(TM) i7 CPU         960  @ 3.20GHz
+    CPU family:              6
+    Model:                   26
+    Thread(s) per core:      2
+    Core(s) per socket:      4
+    Socket(s):               1
+    Stepping:                5
+    Frequency boost:         enabled
+    CPU(s) scaling MHz:      59%
+    CPU max MHz:             3201,0000
+    CPU min MHz:             1600,0000
+    BogoMIPS:                6414,86
+    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ht tm pbe syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts rep_good n
+                             opl xtopology nonstop_tsc cpuid aperfmperf pni dtes64 monitor ds_cpl vmx est tm2 ssse3 cx16 xtpr pdcm sse4_1 sse4_2 popcnt lahf_lm pti ssbd ibrs ibpb stibp tpr_shadow flexpriority ept
+                              vpid dtherm ida vnmi flush_l1d
+Virtualization features:     
+  Virtualization:            VT-x
+Caches (sum of all):         
+  L1d:                       128 KiB (4 instances)
+  L1i:                       128 KiB (4 instances)
+  L2:                        1 MiB (4 instances)
+  L3:                        8 MiB (1 instance)
+NUMA:
+  NUMA node(s):              1
+  NUMA node0 CPU(s):         0-7
+Vulnerabilities:             
+  Gather data sampling:      Not affected
+  Ghostwrite:                Not affected
+  Indirect target selection: Not affected
+  Itlb multihit:             KVM: Mitigation: Split huge pages
+  L1tf:                      Mitigation; PTE Inversion; VMX conditional cache flushes, SMT vulnerable
+  Mds:                       Vulnerable: Clear CPU buffers attempted, no microcode; SMT vulnerable
+  Meltdown:                  Mitigation; PTI
+  Mmio stale data:           Not affected
+  Old microcode:             Not affected
+  Reg file data sampling:    Not affected
+  Retbleed:                  Not affected
+  Spec rstack overflow:      Not affected
+  Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP conditional; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected
+  Srbds:                     Not affected
+  Tsa:                       Not affected
+  Tsx async abort:           Not affected
+  Vmscape:                   Not affected
+GPU:
+
+$ lspci | grep -E "VGA|3D"
+02:00.0 VGA compatible controller: NVIDIA Corporation GM107 [GeForce GTX 750 Ti] (rev a2)
+Reacted by WofWca
+Activity
+
+Alexis-Loskoutoff
+added 
+bug
+Something isn't working
+ on Jan 8
+cjpais commented on Jan 9
+@cjpais
+cjpais
+on Jan 9
+Owner
+Thanks for the report, and this is happening at app launch correct?
+
+Alexis-Loskoutoff commented on Jan 9
+@Alexis-Loskoutoff
+Alexis-Loskoutoff
+on Jan 9
+Author
+Yes exactly
+
+BadisB commented on Jan 14
+@BadisB
+BadisB
+on Jan 14
+Hi! Thanks for the great work, I have been able to test handy on another computer but I have the "illegal instruction" error on my everyday computer running on MX Linux.
+
+$ cat /etc/os-release 
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+NAME="Debian GNU/Linux"
+VERSION_ID="13"
+VERSION="13 (trixie)"
+VERSION_CODENAME=trixie
+DEBIAN_VERSION_FULL=13.2
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+And for the the CPU (definitely not that powerful):
+
+$ lscpu
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             36 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      4
+  On-line CPU(s) list:       0-3
+Vendor ID:                   GenuineIntel
+  Model name:                Intel(R) Atom(TM) CPU  Z3735F @ 1.33GHz
+    CPU family:              6
+    Model:                   55
+    Thread(s) per core:      1
+    Core(s) per socket:      4
+    Socket(s):               1
+    Stepping:                8
+    CPU(s) scaling MHz:      41%
+    CPU max MHz:             1832.6000
+    CPU min MHz:             499.8000
+    BogoMIPS:                2666.66
+    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36
+                              clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm c
+                             onstant_tsc arch_perfmon pebs bts rep_good nopl xtopology tsc_reliable 
+                             nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monito
+                             r ds_cpl vmx est tm2 ssse3 cx16 xtpr pdcm sse4_1 sse4_2 movbe popcnt ts
+                             c_deadline_timer aes rdrand lahf_lm 3dnowprefetch epb pti ibrs ibpb sti
+                             bp tpr_shadow flexpriority ept vpid tsc_adjust smep erms dtherm ida ara
+                             t vnmi md_clear
+Virtualization features:     
+  Virtualization:            VT-x
+Caches (sum of all):         
+  L1d:                       96 KiB (4 instances)
+  L1i:                       128 KiB (4 instances)
+  L2:                        2 MiB (2 instances)
+NUMA:                        
+  NUMA node(s):              1
+  NUMA node0 CPU(s):         0-3
+Vulnerabilities:             
+  Gather data sampling:      Not affected
+  Indirect target selection: Not affected
+  Itlb multihit:             Not affected
+  L1tf:                      Not affected
+  Mds:                       Mitigation; Clear CPU buffers; SMT disabled
+  Meltdown:                  Mitigation; PTI
+  Mmio stale data:           Unknown: No mitigations
+  Reg file data sampling:    Not affected
+  Retbleed:                  Not affected
+  Spec rstack overflow:      Not affected
+  Spec store bypass:         Not affected
+  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB 
+                             filling; PBRSB-eIBRS Not affected; BHI Not affected
+  Srbds:                     Not affected
+  Tsa:                       Not affected
+  Tsx async abort:           Not affected
+  Vmscape:                   Not affected
+Finally for the GPU:
+
+$ lspci | grep -E "VGA|3D"
+00:02.0 VGA compatible controller: Intel Corporation Atom Processor Z36xxx/Z37xxx Series Graphics & Display (rev 0f)
+Again thank you for your work! :)
+
+creengecoader commented on Jan 16
+@creengecoader
+creengecoader
+on Jan 16
+hello @cjpais @BadisB @Alexis-Loskoutoff
+
+I got the "illegal instruction (core dumped)" error when trying to install on an older computer that can run a "current" linux distro, so I asked AI what to do each time an error came up and I was able to successfully install and run Handy, although it might not have run all that well. (So, if you're ok with AI, I'd recommend "debugging" with AI guidance on this maybe).
+
+From memory, some of what needed to be done:
+
+The CPU lacked AVX instructions (?), so it needed to swap npm for bun in installation files.
+
+In the tauri.config.json file I switched "npm" for "bun" in two commands:
+
+"beforeDevCommand": "bun run dev",
+"beforeBuildCommand": "bun run build"
+(npm run dev and npm run build?)
+
+(AI suggests I installed dependencies, for example:)
+
+sudo apt install \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libgtk-3-dev \
+  librsvg2-dev
+I think I ultimately ran "npx tauri dev" to compile (in what directory? the main one? I forget)
+
+The final result runs two separate commands in /Handy/src/tauri-/target/debug:
+
+1 "npm run dev" to start the server;
+
+2 "./handy" to start the app.
+
+Sorry I didn't log things as I go; hope this helps someone debug their issues if they had similar causes to their issue.
+
+ltpitt commented on Feb 2
+@ltpitt
+ltpitt
+on Feb 2
+Same problem here!
+i5 first gen, modern linux:
+Illegal instruction (core dumped)
+
+
+AlexanderYastrebov
+mentioned this on Feb 28
+App crashes on CPUs without FMA3/AVX2 support (Ivy Bridge, Athlon II, etc) #537
+AlexanderYastrebov commented on Feb 28
+@AlexanderYastrebov
+AlexanderYastrebov
+on Feb 28
+Contributor
+The fix for ancient CPU without AVX support would require separate build target or might be not possible at all.
+
+Reacted by kosssi
+
+AlexanderYastrebov
+mentioned this on Feb 28
+[BUG] Handy crashing Windows 11 #436
+sigmaSd commented on Apr 18
+@sigmaSd
+sigmaSd
+on Apr 18
+for i3 3rd gen, handy worked until version 0.7.x version 0.8.x seems to have introduced even a higher requirement
+(though its old, this ancient cpu works well with the models I tested but I mostly use parakeet in case if you're wondering about use case)
+
+cjpais commented on Apr 18
+@cjpais
+cjpais
+on Apr 18
+Owner
+Yes it's a known critical issue, for now move back to 0.7.x. We need to fix this, be patient please! If anyone here can test and try to help fix the CI themselves on a fork it would be a massive help. I only have so much time
+
+Reacted by kosssi
+koloved commented on Jun 3
+@koloved
+koloved
+on Jun 3
+Contributor
+@cjpais #1133 #537 #436
+It seems like it's the same bug presented here and there. It looks like one of them can be closed.
+
+"Problems with AVX/AVX2 instructions on old processors (Illegal Instruction)"
+
+cjpais commented on Jun 4
+@cjpais
+cjpais
+on Jun 4
+Owner
+Mostly keeping them open for people to help test when a fix comes in
+
+Reacted by kosssi
+cjpais commented on Jul 1
+@cjpais
+cjpais
+on Jul 1
+Owner
+@Alexis-Loskoutoff @sigmaSd @ltpitt do you still have this crash in 0.9.0? I targeted a fix for Windows but its possible theres a linux issue still lurking I need to fix
+
+
+cjpais
+mentioned this on Jul 1
+[BUG] v0.8.0 - Not opening at all #1133
+cjpais commented on Jul 3
+@cjpais
+cjpais
+on Jul 3
+Owner
+Closing this as I believe 0.9.0 has fixed. If someone can replicate on 0.9.0 we will re-open
+
+
+cjpais
+closed this as completedon Jul 3
+
+mylendad
+linked a pull request that will close this issue on Sep 22
+fix: ship official baseline ONNX Runtime on Linux x64 mylendad/Handy#1
+
+cjpais
+reopened this on Sep 22
+cjpais commented on Sep 22
+@cjpais
+cjpais
+on Sep 22
+Owner
+reopened for @mylendad
+
+
+mylendad
+mentioned this on Sep 22
+fix: ship official baseline ONNX Runtime on Linux x64 #2131
+
+RomanDenysov
+mentioned this on Oct 6
+fix(ci): link baseline ONNX Runtime into the x86_64 AppImage and RPM #2226
+Add a comment[BUG] Pastes clipboard instead of spoken text
+ #502
+Open
+Open
+[BUG] Pastes clipboard instead of spoken text
+#502
+Description
+@gpallis
+gpallis
+opened on Dec 30, 2025
+This feels so weird that I feel I must be imagining it, but some non-zero chunk of the time, Handy seems to paste the clipboard into the window rather than whatever I've just said. Sometimes it happens a few times in a row, so there's clearly some trigger, but I haven't worked out what it is. I think it might be intense processor use as that's been the case on at least one of those occasions, but I'm guessing.
+
+This is on OSX 15.5 and Handy otherwise works beautifully.
+
+Reacted by Raine Virta, Dmytro Bykon, Amit Kotlovski, Rawa Dara, Rodrigo Mayer, Alex Peters and Elfimov Alexey
+Activity
+
+gpallis
+added 
+bug
+Something isn't working
+ on Dec 30, 2025
+cjpais commented on Dec 30, 2025
+@cjpais
+cjpais
+on Dec 30, 2025
+Owner
+Curious if this is an Intel Mac? It's quite possible we need to add a bit more delay
+
+Also it may be worth trying the "direct" paste method and see if that helps
+
+gpallis commented on Dec 30, 2025
+@gpallis
+gpallis
+on Dec 30, 2025
+Author
+It's M1, alas! I think I can pretty consistently replicate this by running an extremely processor intensive script in the background and then trying to use handy, but I haven't tried the direct paste method yet.
+
+cjpais commented on Dec 31, 2025
+@cjpais
+cjpais
+on Dec 31, 2025
+Owner
+@gpallis thanks for confirming and yeah that makes sense, maybe in the next version I can add another setting which lets you tune the delay and that should help on your system
+
+hbenthow commented on Jan 4
+@hbenthow
+hbenthow
+on Jan 4
+I've been experiencing the exact same issue on Windows. If I look at the history section in Handy, I see that it has successfully transcribed my text, but it doesn't actually put it into whatever text field I have selected. Instead, it puts whatever is on my clipboard in.
+
+Seganation commented on Jan 5
+@Seganation
+Seganation
+on Jan 5
+Hello, I have been experiencing the same issue on many occasions, it pastes the clipboard. Sometimes restarting the handy application helps, but overall, this is a significant issue. I'm on a Mac M3 Air running the Parakeet V3
+
+cjpais commented on Jan 6
+@cjpais
+cjpais
+on Jan 6
+Owner
+Agree this is a critical issue, especially since many people are able to see this. Will take a review of the code soon and see if we can solve this.
+
+
+cjpais
+added 
+critital
+ 
+critical
+ and removed 
+critital
+ on Jan 6
+Repository owner deleted a comment from nabilW on Jan 16
+cjpais commented on Feb 1
+@cjpais
+cjpais
+on Feb 1
+Owner
+@gpallis can you test the latest version 0.7.1? Could you enable the debug menu (cmd+shift+d) and tune the value for 'paste delay'? If you could let me know what value works for you consistently (even under high workload), that would be great. I am generally unable to replicate this on my machine, but I have heard other reports as well and would like to fix this. I suspect a longer delay will help (previously was hardcoded at 50ms)
+
+cjpais commented on Feb 17
+@cjpais
+cjpais
+on Feb 17
+Owner
+Anyone else able to test @Seganation @hbenthow
+
+hbenthow commented on Feb 17
+@hbenthow
+hbenthow
+on Feb 17
+Anyone else able to test @Seganation @hbenthow
+
+@cjpais I sometimes still experienced the issue with 0.7.1. I just now updated to 0.7.5. I haven't tried changing the paste delay setting at any point. The issue is not consistent. Sometimes it happens, sometimes not. Now that I'm using 0.7.5, I'll look out to see if the issue happens again, and if so, I'll try changing the setting and let you know whether it fixes the issue.
+
+cjpais commented on Feb 17
+@cjpais
+cjpais
+on Feb 17
+Owner
+Thanks @hbenthow, would like to find a good setting and close this out.
+
+90 remaining items
+cjpais commented on Sep 16
+@cjpais
+cjpais
+on Sep 16
+Owner
+@raine :(
+
+hbenthow commented on Sep 16
+@hbenthow
+hbenthow
+on Sep 16
+For me, it's pretty much doing the same as before in that it mostly works correctly, but every now and then, especially if I have a high load on my computer, I'm still getting the error even with reliable paste enabled.
+
+raine commented on Sep 16
+@raine
+raine
+on Sep 16
+It's really strange. It's been happening way more recently for me. I turned off Reliable Paste and have been playing around with Paste Delay (After). It's now at 150ms, there's considerable delay in how the text appears, but it's still entering the wrong text, and I need to go to Handy menu and copy previous to clipboard 😕
+
+Image
+amitkot commented on Sep 16
+@amitkot
+amitkot
+on Sep 16
+Update - using the app with the toggle for two weeks now since you suggested it and getting perfect behavior. The issue has not happened once.
+
+raine commented on Sep 16
+@raine
+raine
+on Sep 16
+Big update. Finally started debugging this with an agent using a locally compiled Handy build with extra logging. It looks like Alfred’s clipboard history is involved!
+
+This is what the agent found from the failed paste:
+
+Handy put the correct transcript on the clipboard and sent Cmd+V. Alfred read the new clipboard value 116 ms later. Handy treated that read as confirmation that the target app had pasted it, then restored the old clipboard after 322 ms. Alacritty hadn’t processed Cmd+V yet, so it pasted the old value instead.
+
+macOS doesn’t tell Handy which app read the clipboard, so Alfred’s read looks the same as a read from the actual target app.
+
+We’ve changed my local build to keep the transcript on the clipboard for 8 seconds before restoring the previous value, and I’m testing that now.
+
+This might explain why changing the delays only helps sometimes, and why it seems to happen more under load. I guess other clipboard managers could cause the same thing too.
+
+cjpais commented on Sep 16
+@cjpais
+cjpais
+on Sep 16
+Owner
+@hbenthow do you also use a clipboard manager?
+
+
+GeiserX
+mentioned this on Sep 27
+feat(capture): dictation pastes only where it began, never into a password field, and gives the clipboard back after the app reads it GeiserX/akou#88
+
+HaganMcPhail
+mentioned this on Oct 8
+Default fresh installs to push-to-talk, offline updates, and macOS reliable paste HaganMcPhail/speech-flow#1
+
+tannerhelton
+mentioned this 3w ago
+fix(windows): only snapshot global-memory clipboard formats in reliable paste tannerhelton/Handy#10
+hbenthow commented 3 weeks ago
+@hbenthow
+hbenthow
+3w ago
+@hbenthow do you also use a clipboard manager?
+
+@cjpais I'm sorry it took me so long to respond. I didn't see that you had tagged me or replied to the thread.
+
+No, I don't use a clipboard manager.
+
+I'm on version 0.9.8 of Handy, and I'm still experiencing the issue, sometimes even without heavy system use. Reliable Paste is is still enabled.
+
+
+baluvanan
+mentioned this 2w ago
+Handy Personal v1: own app identity, lossless paste, dataset logging, LM Studio, insights, profiles, eval baluvanan/Handy#1
+SerMishchuk commented last week
+@SerMishchuk
+SerMishchuk
+1w ago
+Reproducing on Linux/GNOME Wayland, with measured evidence matching the wl-copy race analysis by @suuuehgi upthread.
+
+Environment
+Handy 0.10.0 deb, XDG_SESSION_TYPE=wayland, GNOME, Ubuntu-based
+Insertion: paste_method=ctrl_v (wl-copy + ydotool/uinput), clipboard_handling="Don't modify clipboard", reliable_paste=true, delays 300 ms before / 400 ms after, keyboard_implementation=tauri (auto-submit combo via enigo/X11 xtest)
+Failure rate: several times per active day, almost always right after transcription finished while GPU/CPU load was high (Vulkan inference just completed)
+Symptom
+Same as the thread title: the field receives the clipboard content that existed immediately before the dictation started — sometimes that content is empty, so the field receives nothing/empties. It is not an old transcription from history.
+
+Measured evidence (not a guess)
+The transcript itself is intact: on a failed paste, Handy's history.db still contains the full transcription text — so the failure happens between the clipboard write and the keystroke, not earlier in the pipeline.
+Clipboard hash + length captured by a 100 ms poller (no content recorded):
+T0            hash=ac2b245a len=35      # stale content, present before dictation
+T0+30s        hash=86610509 len=46      # new transcript written (matches handy.log "Using wl-copy for clipboard write")
+T0+30s+1s     hash=ac2b245a len=35      # STALE content restored ~1 s after the transcript write
+The restore (this is what dont_modify does to "leave the user's clipboard untouched") lands right around/after the keystroke phase. When delivery of the ydotool/uinput Ctrl+V events is delayed by the compositor (desktop busy right after Vulkan inference), the app processes Ctrl+V after the stale buffer was restored back — and pastes it.
+Relevant handy.log lines of that cycle:
+[DEBUG] Transcription completed in 4.30s for 6.98s of audio (1.62x real-time)
+[INFO] Transcription result: [REDACTED]
+[INFO] Using paste method: CtrlV, delay before: 300ms, delay after: 400ms
+[INFO] Using wl-copy for clipboard write on Wayland
+[INFO] Using ydotool for key combo
+[INFO] Using wl-copy for clipboard write on Wayland   # this is the restore, ~1 s after the first write
+[DEBUG] key(key: Control/Return, Press/Release)      # auto-submit combo
+[DEBUG] Text pasted successfully in 1.2558s          # logs success regardless of what was actually pasted
+The clipboard manager (CopyQ, --clipboard-access monitorClipboard) was killed and removed from autostart for a full test session — the failures persisted — so at least on this setup the bug is in Handy's own write/keystroke/restore sequence, not in a third-party clipboard manager.
+reliable_paste=true did not prevent the failure here.
+Secondary path (possibly a separate issue)
+A recording can be started while the mic device is not yet delivering: Recording stopped and samples retrieved ... sample count: 0, the "transcription" of silence is an empty string, it is silently pasted as empty (Text pasted successfully). Combined with path above, users see "pastes old text" or "pastes nothing" without any error indication — Handy always logs success.
+
+Happy to run targeted experiments (longer delays under reproducible load, disable restore) and provide more logs if useful.
+
+Reacted by hbenthow
+suuuehgi commented last week
+@suuuehgi
+suuuehgi
+1w ago
+Contributor
+Reproducing on Linux/GNOME Wayland, with measured evidence matching the wl-copy race analysis by @suuuehgi upthread.
+
+Side note: These AI-generated texts are really exhausting for me to read.
+
+Reacted by A G and CJ Pais
+
+alanshurafa
+mentioned this 5d ago
+Add slow direct typing paste mode alanshurafa/Handy#29
+
+opragmatico
+mentioned this 2d ago
+Convert and publish Parakeet TDT 0.6B v2 for transformers, and Silero VAD opragmatico/pyscriber#12
+Add a comment[Bug] Handy does not support reading API keys from environment variables
+ #483
+Open
+Open
+[Bug] Handy does not support reading API keys from environment variables
+#483
+Description
+@arunsathiya
+arunsathiya
+opened on Dec 23, 2025
+Currently the Post Processing API key is stored directly in the settings. It would be great to have an option to read the API key from an environment variable instead (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY, or a custom variable name).
+
+This would be useful for users who prefer not to store secrets in application config files, and aligns with common practices in CLI tools and developer workflows where API keys are typically managed via environment variables or secret managers.
+
+Reacted by Jakub Zomerfeld
+Activity
+
+arunsathiya
+mentioned this on Dec 23, 2025
+[BUG] New feature for Post Process does not propose any provider #311
+cjpais commented on Dec 23, 2025
+@cjpais
+cjpais
+on Dec 23, 2025
+Owner
+Changing the label to bug because I think this is an issue. Typically I like to have feature requests in discussions, but this one will make it into Handy v1.0.0 for sure so we will track it in an issue.
+
+I didn't call this issue out in the original post-processing PR because I remember there being some cross platform issues when I first was writing handy with this feature. Post processing was cut from v0.1.0 partially because of that issue. But I think it's time to revisit it and fix it properly
+
+Reacted by Josh Ribakoff and Jakub Zomerfeld
+
+cjpais
+changed the title [-][Feature Request] Support reading API keys from environment variables[/-] [+][Bug] Handy does not support reading API keys from environment variables[/+] on Dec 23, 2025
+arunsathiya commented on Dec 23, 2025
+@arunsathiya
+arunsathiya
+on Dec 23, 2025
+Author
+Perfect, thanks for the context @cjpais. Love your work with Handy!
+
+Reacted by CJ Pais
+arunsathiya commented on Dec 23, 2025
+@arunsathiya
+arunsathiya
+on Dec 23, 2025
+Author
+I created these two feature requests before reading your comment here:
+
+[Bug] non-text models (whisper) are included in Post Processing model selector #484
+[Feature Request] Support Cloudflare AI Gateway authentication #485
+Happy to move them elsewhere/discussions if advised.
+
+cjpais commented on Dec 23, 2025
+@cjpais
+cjpais
+on Dec 23, 2025
+Owner
+If you could @arunsathiya either frame them as bugs directly or move them to discussions. Feature requests belong in discussions. For adding Cloudflare to me that sounds like a discussion/thread for "I want x post processing provider, everyone say what providers you want" kind of vibe
+
+Reacted by Arun
+
+arunsathiya
+mentioned this on Dec 23, 2025
+[Feature Request] Support Cloudflare AI Gateway authentication #485
+jtracey93 commented on Jan 20
+@jtracey93
+jtracey93
+on Jan 20
+Just adding my input here, I would love a way to programmatically update The local URL for my custom models. I have tried updating the settings.json file via some scripts, but it does not seem to be honoured. Even a relaunch of handy doesn't seem to honour it.
+
+So if it can read an environment variable, this would be great and also if it could dynamically reread it every time to make sure the end point hasn't changed that would be great
+
+@cjpais
+
+
+jtracey93
+mentioned this on Jan 20
+feat: add llm base url env support #633
+
+alanshurafa
+mentioned this 5d ago[BUG] Paste Method > Direct does not use the correct keyboard layout.
+ #439
+Open
+#493
+Open
+[BUG] Paste Method > Direct does not use the correct keyboard layout.
+#439
+#493
+Description
+@d4h0
+d4h0
+opened on Dec 11, 2025
+Bug Description
+As the title says, Paste Method > Direct does not use the correct keyboard layout.
+
+To test Handy, I said "Eins, zwei, drei" ("One, two, three" in German).
+
+The History shows "Eins, zwei, drei" and if I switch Paste Method to Clipboard, "Eins, zwei, drei" is pasted.
+
+Paste Method > Direct results in "Eins, ywei, drei." ("zwei" vs. "ywei").
+
+The characters 'z' and 'y' are switched on the QWERTY (e.g., US) and QWERTZ (e.g., Germany) keyboard layouts, therefore I guess Paste Method > Direct does not use the correct keyboard layout.
+
+All users that don't use QWERTY probably will have this issue.
+
+I asked Gemini how to fix the issue, and it gave me the following:
+
+This is likely a "Scancode vs. Unicode" issue in the Rust backend. The application appears to be simulating key presses based on physical US key locations (Scancodes) rather than sending the actual characters.
+
+The Fix:
+In the Rust code handling the "Direct" paste method (likely using the enigo crate), switch from simulating individual keys to using the text injection method.
+
+If using enigo, change the implementation to use .text():
+
+// ❌ Likely current implementation (maps to physical keys on US layout):
+// enigo.key_click(Key::Layout('z')); 
+
+// ✅ Proposed fix (sends the string as Unicode, respecting layout):
+enigo.text(transcribed_text);
+System Information
+App Version:
+
+v0.6.6
+
+Operating System:
+
+Arch Linux (rolling release, no version)
+
+CPU:
+
+Not relevant, I believe.
+
+GPU:
+
+Not relevant, I believe.
+
+Reacted by konsti, Peter Hostačný, Connor Brinton, Max Rumford, Stefan Sydow, Thomas McWork and Lewin Kelly
+Activity
+
+d4h0
+added 
+bug
+Something isn't working
+ on Dec 11, 2025
+cjpais commented on Dec 12, 2025
+@cjpais
+cjpais
+on Dec 12, 2025
+Owner
+I think largely this is an enigo issue. We already use .text(), that's what the direct is under the hood. Unfortunately I'm not a Linux user, so I can't easily test fixes. Plus this is probably dependent on compositor and DE. We will need enigo upstream to fix this.
+
+
+cjpais
+closed this as completedon Dec 12, 2025
+
+cjpais
+reopened this on Dec 12, 2025
+
+cjpais
+closed this as not plannedon Dec 12, 2025
+d4h0 commented on Dec 12, 2025
+@d4h0
+d4h0
+on Dec 12, 2025
+Author
+There seems to be a related issue in the enigo repo: enigo-rs/enigo#429
+
+Reacted by CJ Pais and Danny Smith
+
+d4h0
+mentioned this on Dec 12, 2025
+linux: xdo: Entering text with the characters y and Y enters z and Z instead on a German layout enigo-rs/enigo#429
+pentamassiv commented on Dec 12, 2025
+@pentamassiv
+pentamassiv
+on Dec 12, 2025
+Enigo has that issue only with the xdo feature. It used to be the default, but now it uses x11rb by default, where that should work. Can you please share some logs so I can check what's going on?
+
+Also, I noticed that you create the Enigo struct each time you want to paste something. I recommend creating it only once, because it does a lot of work creating a connection to the compositor that you keep repeating.
+
+
+cjpais
+reopened this on Dec 12, 2025
+cjpais commented on Dec 12, 2025
+@cjpais
+cjpais
+on Dec 12, 2025
+Owner
+Hey @pentamassiv I will refactor the code so that it's only created once. I believe we are using enigo with the default features
+
+enigo = "0.6.1" let me know if I should be more explicit with the features
+
+@d4h0 would you mind sharing logs, you can find the log directory by opening the debug panel (ctrl+shift+d) and then going to debug -> Log Directory
+
+
+cjpais
+mentioned this on Dec 12, 2025
+refactor enigo input #441
+pentamassiv commented on Dec 12, 2025
+@pentamassiv
+pentamassiv
+on Dec 12, 2025
+No need to change anything. It correctly picks x11rb. If you fell adventurous, you can test enabling the wayland or libei features, but they are still experimental so there are bugs.
+
+Reacted by CJ Pais
+d4h0 commented on Dec 12, 2025
+@d4h0
+d4h0
+on Dec 12, 2025
+Author
+@cjpais & @pentamassiv : Here are the log entries for the spoken words "Y plus y" (resulting in "Y plus z"):
+
+Expand to view log entries
+Some relevant-looking lines:
+
+The transcription is correct:
+
+[2025-12-12][13:02:45][handy_app_lib::managers::transcription][INFO] Transcription result: Y plus y.
+
+It seems the first character is specifically mapped to the correct value (as mentioned in the other issue, if the first character is a Y or Z, that character is correctly written):
+
+[2025-12-12][13:02:45][enigo::platform::keymap][DEBUG] mapped keycode 97 to keysym XK_Y
+[2025-12-12][13:02:45][enigo::platform::x11][DEBUG] unmapped keycode 97
+
+pentamassiv commented on Dec 12, 2025
+@pentamassiv
+pentamassiv
+on Dec 12, 2025
+Thanks, x11rb is used. I'll have to look into it. Might be a regression. I have a German layout as well. I'll try to reproduce and fix it this weekend
+
+Reacted by d4h0
+Reacted by CJ Pais
+
+johnmalek312
+mentioned this on Dec 25, 2025
+fix: direct typing #493
+17 remaining items
+odofaro commented on Jul 11
+@odofaro
+odofaro
+on Jul 11
+I can confirm the same underlying issue with Spanish accented characters.
+
+Environment
+OS: Pop!_OS
+Desktop environment: GNOME
+Session type: X11
+Keyboard layout: Spanish (es)
+Installation: latest available Handy AppImage
+Affected paste method: Direct
+Reproduction
+With Paste Method: Direct, Spanish accented characters are omitted during
+insertion into the focused application.
+
+For example, the transcript/post-processing result may correctly contain:
+
+La información técnica está también en la documentación.
+
+But the text inserted by Direct input loses accented characters.
+
+Changing the paste method to Clipboard (Ctrl+V) immediately fixes the problem:
+the exact same transcription is pasted with all Unicode characters preserved,
+including áéíóúüñ.
+
+This suggests that the transcription and post-processing are correct, and that
+the problem is specifically in Direct input / keyboard-layout handling under
+X11 with the es layout.
+
+
+jamditis
+mentioned this on Jul 22
+Hotkey registration diagnostics and conflict warnings jamditis/audiobud#193
+
+cjpais
+mentioned this on Jul 31
+[BUG] Transcribing Arabic explicitly or via auto detection enters blank characters instead, no text #1814
+
+sleeyax
+mentioned this on Aug 4
+Handy dictation does not insert text into Microsoft Teams (wtype vs XWayland) sleeyax/dotfiles#3
+
+cjpais
+mentioned this on Aug 5
+[BUG] Missing accent or special characters (ê, œ) in french (at least) #1853
+
+Tamila-2017
+mentioned this in 2 issues on Aug 12
+[BUG] Paste Method > Direct types wrong characters on non-US keyboard layout (Russian: comma to "б", period to "ю") #1860
+[BUG] No warning when captured audio is digital silence — transcription silently returns empty #1899
+
+thimsen
+mentioned this on Aug 13
+[BUG] Transcribed text does not paste when keyboard layout is Dvorak (Mac) #1904
+mtzanidakis commented on Aug 14
+@mtzanidakis
+mtzanidakis
+on Aug 14
+There are two different failures being reported in this thread and they have the
+same one-line cause: every direct-typing backend turns a character into a
+keycode, and a keycode has no meaning without a layout.
+
+Wrong characters — @konstin's Why doesn't this work? → Whz doesnät this work_.
+dotool and ydotool push keycodes through uinput, and the compositor then
+interprets them with whatever layout is actually loaded. The tool computed them
+against a US map, the desktop reads them as QWERTZ, so y/z swap and the
+punctuation lands wherever those physical keys happen to be. dotool's own man
+page says as much — it "may type gobbledygook if it's simulating keycodes for a
+different keyboard layout" than the environment expects.
+
+Missing characters — Greek, Cyrillic, and accented Latin simply vanishing.
+The keymap-aware backends do the opposite: they look the character up in the
+keymap and find nothing, because they only search the layout group that is
+active at that instant. On a us,gr setup with us active, no keycode produces
+γ, so the character is dropped. enigo's libei backend makes this exact
+assumption explicitly — key_to_keycode in linux/libei.rs hardcodes the
+layout index to 0.
+
+It is worth stressing that this is not about non-Latin scripts, or uppercase, or
+accents as categories. It is about "not reachable from the group that is active
+right now". On the same us,gr layout, € is lost exactly like γ is; flip to
+the Greek group and plain a and b start disappearing instead. That is why the
+German, French, Spanish, Russian and Greek reports here all behave slightly
+differently while being one bug.
+
+What actually escapes it
+The only mechanism that hands the compositor a symbol instead of a keycode is
+NotifyKeyboardKeysym on the xdg-desktop-portal RemoteDesktop interface, which
+is what #689 builds on. It is the right direction, but on current desktops it
+does not get you all the way:
+
+KWin ≥ 6.6 synthesizes a scratch keymap for symbols outside the active
+group, so it works — except in Chromium and Electron applications. KWin sends
+the key on evdev keycode 247, Chromium translates evdev codes to DomCode
+through a fixed table that has no row for 247, and
+WaylandKeyboard::DispatchKey returns early on DomCode::NONE. The keystroke
+disappears with no error anywhere. So Greek types fine into Konsole and system
+dialogs and not at all into Chrome, VS Code or Slack. That is a one-constant
+fix and I have it in review:
+https://invent.kde.org/plasma/kwin/-/merge_requests/9755
+mutter drops out-of-group keysyms outright.
+pick_keycode_for_keyval_in_current_group_in_impl scans only
+XKB_STATE_LAYOUT_EFFECTIVE and logs No keycode found for keyval X in current group; the injection is queued to another thread, so the D-Bus reply is sent
+before the lookup and the caller is told it succeeded. Open upstream since 2021
+and 2022 as mutter#1802
+and mutter#2111, where I
+have added the current analysis and a reproducer. There is no client-side way
+around it either: mutter does not implement zwp_virtual_keyboard_manager_v1,
+which is the protocol wtype needs — that is [BUG] wtype failures seem silently ignored #522 here.
+wlroots compositors (sway, Hyprland) have no RemoteDesktop portal at all,
+but they are the one family that does implement
+zwp_virtual_keyboard_manager_v1, which is why wtype works there and nowhere
+else. Exactly the inverse of KDE and GNOME. (That one is from the protocol
+support rather than my own testing — I only have KDE hardware here.)
+There is one piece of good news for GNOME, though not yet in a release.
+https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/4996 adds libei's text
+capability to mutter, which has two halves: a keysym event, which routes into
+the broken lookup above, and a utf8 event, which takes a completely different
+path — CLUTTER_IM_COMMIT, i.e. the input-method route, with no keycode
+resolution anywhere. That half can carry arbitrary text. It is worth watching,
+because it would give GNOME a real answer rather than a workaround, and Handy is
+already on libei through enigo. (Its keysym half inheriting the bug is something
+I have flagged on the MR.)
+
+The practical answer today
+@cjpais is right that Direct is not great, though I would put it as a limit on
+what the application can promise rather than on the approach. Direct typing is
+the nicer behaviour when the compositor cooperates — it leaves the clipboard
+alone and does not care what the target application binds paste to — and on KDE
+it does cooperate, or will once the MR above lands. What Handy cannot do is make
+that true on mutter or on wlroots, so it cannot be the path everything falls back
+to.
+
+Clipboard plus a paste chord is the only path that is independent of both the
+layout and the compositor — X11 included. It is not free of caveats: the chord
+still has to match what the target application uses, so terminals need
+Ctrl+Shift+V rather than Ctrl+V, which is presumably why the setting exists.
+But it fails visibly and in a way the user can fix, rather than dropping
+characters silently.
+
+One detail matters for it: the chord has to be sent as evdev keycodes
+(KEY_LEFTCTRL 29, KEY_V 47), not as keysyms. Physical keycodes exist in every
+layout; a keysym for v does not, once the active group is Greek or Cyrillic. I
+measured what each compositor then does to a keysym Ctrl+v, and both break it
+silently, in different shapes:
+
+KWin routes the v through the scratch keymap, and the keymap swap
+force-releases the modifier that is being held — so the chord degrades into
+typing a bare v into the document.
+mutter drops the v outright (No keycode found for keyval 76 in current group) and nothing at all reaches the client. Modifier handling itself is
+clean — Control_L exists in every group, so it presses and releases
+correctly — the chord simply has no second half.
+The same run also confirms the symmetry mentioned above: with the Greek group
+active, a plain b sent as a keysym is dropped by mutter exactly like γ is
+with the Latin group active.
+
+That also means the Ctrl+Shift+U Unicode fallback in #689 will not rescue the
+cases it is meant to: it is an IBus/GTK convention, so it does nothing in Qt
+applications, most terminals, or Chromium and Electron apps — the same set that
+loses the keysym path today. Replacing it with a clipboard fallback for any
+character the active layout cannot produce would close this issue for everyone
+rather than for KDE users, and it needs no new platform support.
+
+I am on a us,gr KDE Plasma 6.7.4 setup and happy to test patches, or to run
+the same measurements on someone else's layout if that helps narrow a specific
+report here.
+
+
+ekuiter
+mentioned this on Aug 24
+[BUG] Paste Method > Clipboard does not use the correct keyboard layout #1959
+jslipak commented on Aug 27
+@jslipak
+jslipak
+on Aug 27
+Related but more specific reproduction on Arch Linux + GNOME Wayland.
+
+Environment:
+
+Arch Linux, GNOME, Wayland
+Handy 0.9.6-1 from AUR (before a local rebuild)
+ydotool 1.0.4, wl-clipboard 2.3.0, wtype 0.4
+English International keyboard layout
+With Paste Method = Direct and Typing Tool = ydotool, Whisper recognizes the text correctly and the clipboard contains the correct Unicode text, but automatic insertion corrupts Spanish characters. Examples:
+
+Mamá toma café en Córdoba.
+-> MamC! toma cafC) en CC3rdoba.
+
+versión -> versiC3n
+cómo -> cC3mo
+está -> estC!
+The relevant log lines are:
+
+Using paste method: Direct
+Using user-specified ydotool
+Using wl-copy for clipboard write on Wayland
+The Direct path passes the complete transcription to ydotool type -- <text>. This is layout/key-event based and cannot preserve characters such as á é í ó ú ñ ü ¿ ¡ with this keyboard layout. Manual paste from the clipboard works correctly.
+
+Confirmed workaround:
+
+Clipboard Handling = Copy to Clipboard
+Paste Method = Clipboard / Ctrl+V
+In this configuration, wl-copy preserves the text exactly and ydotool is used only to emit the paste shortcut. For terminal applications, Ctrl+Shift+V may be needed, so the shortcut should remain configurable rather than hardcoded.
+
+Suggested fix: when Direct would use ydotool on Wayland, avoid passing non-ASCII text to ydotool type; prefer clipboard plus the configured paste shortcut, or clearly warn/fallback. Please also consider a regression test covering Spanish Unicode and non-US/International layouts.
+
+The GNOME/wtype selection problem appears related to #1549; this report focuses specifically on Unicode corruption in the Direct + ydotool type path.
+
+
+a-n-d-r
+mentioned this on Aug 30
+[BUG] Linux: clipboard paste hardcodes evdev keycode 29 for Ctrl — breaks with common XKB ctrl:* options #2004
+bbinet commented on Sep 2
+@bbinet
+bbinet
+on Sep 2
+I've faced the same issues with my french keyboard, but I noticed that if I run command "setxkbmap fr", then the problem is fixed.
+This is weird, because my keyboard is already configured as a french keyboard on my system, but setxkbmap must do something more that is needed by Handy to work fine here.
+This may give some hints to resolve the issue?
+
+
+B-Galati
+mentioned this on Oct 5
+docs: add overlay, wl-clipboard and non-QWERTY paste notes to the Ubuntu notes #2212
+
+alanshurafa
+mentioned this 5d ago
+Add slow direct typing paste mode alanshurafa/Handy#29[BUG] App freezes on Windows (not responding) when activated in the app that was started under admin privileges
+ #434
+Open
+Open
+[BUG] App freezes on Windows (not responding) when activated in the app that was started under admin privileges
+#434
+Description
+@hubaksis
+hubaksis
+opened on Dec 11, 2025
+Bug Description
+Handy hangs while interacting with the app that was started under the administrator privileges.
+
+How to reproduce
+Start Notepad under Administrator Privileges (Run as Administrator).
+Press Ctrl + Space to activate Push to talk.
+The app doesn't show any activity while talking, doesn't disappear, doesn't stop when Ctrl + Space is released, cannot be closed by pressing the 'cross'. It could only be killed via the Task manager
+System Information
+App Version: 0.6.5 and 0.6.4
+Operating System: Windows 11 Pro 25H2
+CPU: 11th Gen Intel(R) Core(TM) i7-11700K
+GPU: NVidia GTX 1650
+
+Workaround
+Start the program with administrator privileges. Then the issue doesn't happen.
+
+Debug log of the 'failed' session.
+I noticed that after pressing 'Push to talk combination' it almost immediately shows 'Transcribing' and then hangs, despite me holding Ctrl + Space the buttons.
+
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][INFO] Microphone stream initialized in 2.7515ms
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 2.7877ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 14.4057ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4315ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::audio_toolkit::audio::recorder][INFO] Using device: Ok("Microphone (Realtek(R) Audio)")
+Sample rate: 48000
+Channels: 2
+Format: F32
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream stopped
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording stopped and samples retrieved in 93.1661ms, sample count: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Audio vector length: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Empty audio vector
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Transcription completed in 12.9µs: ''
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][INFO] Microphone stream initialized in 2.6413ms
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 2.6913ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 13.4217ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4833ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::audio_toolkit::audio::recorder][INFO] Using device: Ok("Microphone (Realtek(R) Audio)")
+Sample rate: 48000
+Channels: 2
+Format: F32
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream already active
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream stopped
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording stopped and samples retrieved in 91.7672ms, sample count: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 73.3364ms
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Audio vector length: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Empty audio vector
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 79.2228ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Transcription completed in 85.8µs: ''
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4862ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+Activity
+
+hubaksis
+added 
+bug
+Something isn't working
+ on Dec 11, 2025
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+hello fine windows testers! are any of you able to replicate this?
+
+thumbs down this message if not, if yes, please thumbs up and comment
+
+@giuliofoletto
+@bustozoni
+@BerthalonLucas
+@jstone09
+@cassionevezzz
+
+Reacted by giuliofoletto, Schmurtz, Nicolas, Eternal21, Rohit Sharma and Kazi Hossain
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+hello fine windows testers! are any of you able to replicate this?
+
+thumbs down this message if not, if yes, please thumbs up and comment
+
+@giuliofoletto @bustozoni @BerthalonLucas @jstone09 @cassionevezzz
+
+Seems repeatable from a very quick test. Handy hangs if it is started without admin privileges, but notepad is started with admin privileges. The same seems to happen with other programs (instead of notepad) as well.
+
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+Great thank you for the confirmation. From a quick chat with the LLM's it might be possible to add a manifest. Something like this:
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel
+          level="asInvoker"
+          uiAccess="true" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+which might be able to get around this issue. the other alternative is always starting handy as admin.
+
+otherwise if these preferred options don't work, we might need to find a workaround somewhere to at least avoiding crashing. but it would be best to fix the root
+
+Reacted by Eternal21
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+In my very personal opinion, requiring handy to run with admin privileges is not ideal. It seems that this is necessary only for a very narrow use case, so requiring it always might be seen as problematic (and a security risk) by tech-savvy users. I'm no expert in development of GUI Windows apps, so I am not sure of the best course of action to fix this. My 2 cents are that it's a bit strange that the crash happens when the recording is supposed to start. Intuitively, I'd have thought to encounter problems when Handy tries to paste in a window it cannot access. Maybe we should look into what kind of interaction Handy has with the app where the focus is at the moment of recording?
+
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+Addendum:
+
+Switching focus from a window without admin privileges to one with admin privileges while recording also causes the freeze.
+I thought the problem might be related to the overlay (focus-related issue?), but it happens also if the overlay is set to None.
+The problem is different if push-to-talk is disabled. In this case Handy does not crash! However, it does not paste in the window with privileges, if the recording is stopped there. It can copy to clipboard though. Could it be that the privileged window somehow messes up the key-press?
+Something remotely similar happens also with discord, which also has a push-to-talk option. No crash there, but if the focus is on a privileged window, the push-to-talk command is ignored (i.e. if it is not pressed when the focus shifts to the window, a later press is ignored; if it is already pressed when the focus shifts to the window, key release does not disable the recording). I suspect privileged windows mess something with key presses.
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+I agree we should definitely not be starting as admin imo
+
+Thanks for the additional details, I do feel this is kind of a corner case but it would be nice to have ironed out before 1.0.0 if possible
+
+schmurtzm commented on Dec 17, 2025
+@schmurtzm
+schmurtzm
+on Dec 17, 2025
+I can confirm Giulio Foletto's observations.
+In my opinion, the fact that Handy is freezing when the overlay is enabled over an elevated app can be considered a bug.
+
+However, it seems normal that an app not elevated can't interfere with an admin window. For example, as a user of Ditto (a clipboard manager), when you try to paste from Ditto into an elevated window, Ditto will prompt to run an elevated task, launching its own binary with elevated privileges, which then allows pasting into the elevated window. They call this "UAC helper."
+You can observe a similar behavior with an AutoHotkey script.
+Any workaround to bypass this behavior would create a potential security breach.
+
+So, the best solution would probably be to fix the freezing bug first.
+Then, for the scenario where "Handy (not elevated)" interacts with an "elevated Notepad" window, Handy could display a message (e.g., "I’m not going to make it" 😄) when an elevated target window is detected.
+
+Edit:
+After further consideration, here’s an ideal approach for handling an elevated window, assuming we don’t want to cancel the current transcription:
+
+Detect if the target window is elevated.
+The overlay alerts the user:
+"⚠ Handy cannot type in an elevated UAC window directly."
+At the end of the transcription, the overlay displays a button to copy the content to the clipboard, with the message:
+"⚠ Handy cannot type in an elevated UAC window directly. Press this button to copy the current content to the clipboard, then manually paste it into your elevated window."
+The user can then manually press Ctrl + V to paste the content.
+It might not be the easiest to implement 😅, but this approach will guide the user through the process step by step.
+
+Reacted by hubaksis
+giuliofoletto commented on Dec 18, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 18, 2025
+Contributor
+Makes sense, but the crash happens when the focus moves to an elevated window while recording, not at the end of the recording. Moreover, it does not seem to be related to the overlay, but rather to the push-to-talk.
+
+hubaksis commented on Dec 19, 2025
+@hubaksis
+hubaksis
+on Dec 19, 2025
+Author
+Thank you for looking into this issue.
+The described case with elevated notepad was just a minimal reproducible example.
+
+As it was mentioned above, it's definitely connected to the holding "hotkey" and push to talk option.
+If push to talk is "off" and you just shortly press Ctrl+Space, then transcription starts, after the second press it stops, but the text isn't pasted into the elevated window. However, if you try to hold the hotkey just a bit longer (without push to talk activated) - it hangs.
+
+Also from my initial logs you can see that the length of the record is less than 100ms, and there are two of them.
+
+Reacted by Nicolas
+
+cjpais
+mentioned this on Jan 27
+[BUG] Does not work in Windows terminal with admin privileges. #677
+
+DylanBricar
+added a commit that references this issue on Mar 11
+feat: batch upstream PRs + issues + review fixes
+
+Verified
+65ef973
+
+xronocode
+mentioned this on Jul 18
+[BUG] UI can beachball while opening/closing audio devices during recording #1715
+
+emerson-d-lopes
+mentioned this on Jul 22
+Windows: sequence the clipboard restore after the target has read it #1770
+
+cjpais
+added 
+platform: windows
+Issues related to the Windows platform
+ on Aug 1
+
+asjad-vyro
+mentioned this on Aug 2
+fix: recover microphone stream after the capture worker dies #1838
+SandroHub013 commented on Aug 13
+@SandroHub013
+SandroHub013
+on Aug 13
+I retested this on current main (37a26fd, version 0.9.5) on Windows 11 26200 and measured what the OS actually does to us. The freeze is gone — I could not reproduce a hang in any of the three paths below. But the underlying cause is still there and now produces two different, quieter failures, so I think this issue needs re-describing rather than closing.
+
+What the OS does
+I wrote a small probe against handy-keys 0.3.3 (the version this repo pins) that puts three streams on one timeline: what the LL hook delivers, what GetAsyncKeyState reports, and which window is foreground. Same key pair as the report, Ctrl+Space, unelevated process, elevated Notepad as the target.
+
+Control — normal window focused, keys physically held:
+
+71346  BEAT  fg=Notepad.exe elevated=no  ctrl=true
+72353  BEAT  fg=Notepad.exe elevated=no  ctrl=true
+       ...continuous HOOK key=Space down=true auto-repeat
+Case — elevated window focused, same keys physically held, 7 seconds:
+
+98494  BEAT  fg=Notepad.exe elevated=yes ctrl=false
+99504  BEAT  fg=Notepad.exe elevated=yes ctrl=false
+       ...zero HOOK events
+The part I did not expect: GetAsyncKeyState goes blind too, not just the hook. ctrl is read identically in both runs and reports false while the key is physically down. So while an elevated window has focus, an unelevated process has no way to observe keyboard state — neither the hook nor a physical-state poll.
+
+That matters for the repair primitive already in handy-keys: reconcile_modifiers() is built on GetAsyncKeyState, so it cannot reconcile anything during elevated focus. Its existing trigger (WM_POWERBROADCAST / WM_WTSSESSION_CHANGE) never fires here either.
+
+One thing is not blind: GetForegroundWindow keeps working, and OpenProcessToken failing on the foreground process is itself a reliable signal for "input from here will not reach me".
+
+What that produces today
+1. Push-to-talk release is never delivered, so the recording is unbounded. Press over a normal window, switch to the elevated window while holding, release. Nothing happens. The release only lands when focus leaves the elevated window:
+
+11:43:28 handy-keys event: binding=transcribe, hotkey=ctrl+space, state=Pressed
+11:43:29 Recording started for binding transcribe
+         ... focus moved to elevated Notepad, key physically released, no event
+11:43:48 handy-keys event: binding=transcribe, hotkey=ctrl+space, state=Released
+11:43:48 Recording stopped and samples retrieved, sample count: 237120
+20 seconds between the press and the release finally landing, with the key physically let go somewhere in the middle — the recording ran for all of it, and would have kept going indefinitely had focus stayed on the elevated window. This is @giuliofoletto's "switching focus while recording" case: it no longer freezes, it strands.
+
+2. The transcript is delivered to the wrong window. It pastes wherever focus landed when the release finally arrived, not where the user was speaking.
+
+3. Starting over an elevated window does nothing at all, silently. No handy-keys event is logged, no overlay, no feedback. The RELEASE_GRACE/DEBOUNCE handling in TranscriptionCoordinator never sees an event to work with.
+
+The original report's log (two ~100ms recordings, then a hang) does not match any of this, which I think is simply because the coordinator, reliable-paste and secure_input work all landed after December.
+
+Where I think the fix goes, and the question
+Since the foreground window is observable, the state can be bounded: while a push-to-talk recording is active and focus moves to a window whose input we cannot receive, the release is guaranteed never to arrive, so continuing is guaranteed wrong.
+
+What should happen at that moment is a behaviour call I would rather not make unilaterally:
+
+Stop and transcribe, treating the focus change as the release — keeps the user's speech, but the paste target is then the elevated window, where it will fail by design.
+Cancel and surface why — no wrong-window paste and no stranded recording, at the cost of discarding what was said.
+There is also the separate, smaller question of whether case 3 deserves any feedback at all, or whether silence is acceptable there.
+
+Happy to send a PR once you say which of those you want. Worth noting the detection may belong in handy-keys rather than here, since that is where the input observability is known — I can go either way.
+
+Tested on Windows 11 Home 26200.9168, handy-keys 0.3.3, keyboard_implementation: HandyKeys, push_to_talk: true. I have not reproduced on any other Windows build, and the original reporter's freeze may well still exist on older ones.
+
+AI disclosure: I used Claude Code for this investigation — it wrote the probe, read the logs with me, and drafted this comment. The measurements and the reproduction are from my machine.
+
+
+cjpais
+mentioned this on Oct 5
+[BUG] Overlay state all bugged Windows 11. #508
+
+cjpais
+mentioned this on Oct 13
+[BUG] Handy not working inside VS Code editor in Windows 10 Pro. Works in NotePad++ but not VSCode #1946
+
+CNCSMonster
+mentioned this 1w ago
+[BUG] Windows: tray icon update fails (E_FAIL) and the transcription coordinator panics, leaving the hotkey dead #2408
+
+alanshurafa
+mentioned this in 2 pull requests 1w ago
+fix(windows): say so when the focused app runs as administrator instead of pasting nothing alanshurafa/Handy#13
+fix(windows): say so when the focused app runs as administrator instead of pasting nothing #2428
+Add a comment
+fix: let API key be env:NAME so the secret stays out of settings alanshurafa/Handy#27
+
+alanshurafa
+added a commit that references this issue 4d ago
+fix: let API key be env:NAME so the secret stays out of settings
+
+138d31f
+
+alanshurafa
+mentioned this 2d ago
+fix: let API key be env:NAME so the secret stays out of settings #2474
+Add a comment[BUG] App freezes on Windows (not responding) when activated in the app that was started under admin privileges
+ #434
+Open
+Open
+[BUG] App freezes on Windows (not responding) when activated in the app that was started under admin privileges
+#434
+Description
+@hubaksis
+hubaksis
+opened on Dec 11, 2025
+Bug Description
+Handy hangs while interacting with the app that was started under the administrator privileges.
+
+How to reproduce
+Start Notepad under Administrator Privileges (Run as Administrator).
+Press Ctrl + Space to activate Push to talk.
+The app doesn't show any activity while talking, doesn't disappear, doesn't stop when Ctrl + Space is released, cannot be closed by pressing the 'cross'. It could only be killed via the Task manager
+System Information
+App Version: 0.6.5 and 0.6.4
+Operating System: Windows 11 Pro 25H2
+CPU: 11th Gen Intel(R) Core(TM) i7-11700K
+GPU: NVidia GTX 1650
+
+Workaround
+Start the program with administrator privileges. Then the issue doesn't happen.
+
+Debug log of the 'failed' session.
+I noticed that after pressing 'Push to talk combination' it almost immediately shows 'Transcribing' and then hangs, despite me holding Ctrl + Space the buttons.
+
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][INFO] Microphone stream initialized in 2.7515ms
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 2.7877ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 14.4057ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4315ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::audio_toolkit::audio::recorder][INFO] Using device: Ok("Microphone (Realtek(R) Audio)")
+Sample rate: 48000
+Channels: 2
+Format: F32
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream stopped
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording stopped and samples retrieved in 93.1661ms, sample count: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Audio vector length: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Empty audio vector
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Transcription completed in 12.9µs: ''
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][INFO] Microphone stream initialized in 2.6413ms
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 2.6913ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 13.4217ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4833ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::audio_toolkit::audio::recorder][INFO] Using device: Ok("Microphone (Realtek(R) Audio)")
+Sample rate: 48000
+Channels: 2
+Format: F32
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream already active
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Microphone stream stopped
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording stopped and samples retrieved in 91.7672ms, sample count: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::audio][DEBUG] Recording started for binding transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Recording started in 73.3364ms
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Audio vector length: 0
+[2025-12-11][02:41:46][handy_app_lib::managers::transcription][DEBUG] Empty audio vector
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start completed in 79.2228ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Transcription completed in 85.8µs: ''
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop called for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::stop completed in 5.4862ms
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Starting async transcription task for binding: transcribe
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] TranscribeAction::start called for binding: transcribe
+[2025-12-11][02:41:46][enigo][DEBUG] using default settings
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mconnection established on windows�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] �[93mlocation()�[0m
+[2025-12-11][02:41:46][enigo::platform::win_impl][DEBUG] released all held keys
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Microphone mode - always_on: false
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] On-demand mode: Starting recording first, then audio feedback
+[2025-12-11][02:41:46][handy_app_lib::actions][DEBUG] Handling delayed audio feedback/mute sequence
+Activity
+
+hubaksis
+added 
+bug
+Something isn't working
+ on Dec 11, 2025
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+hello fine windows testers! are any of you able to replicate this?
+
+thumbs down this message if not, if yes, please thumbs up and comment
+
+@giuliofoletto
+@bustozoni
+@BerthalonLucas
+@jstone09
+@cassionevezzz
+
+Reacted by giuliofoletto, Schmurtz, Nicolas, Eternal21, Rohit Sharma and Kazi Hossain
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+hello fine windows testers! are any of you able to replicate this?
+
+thumbs down this message if not, if yes, please thumbs up and comment
+
+@giuliofoletto @bustozoni @BerthalonLucas @jstone09 @cassionevezzz
+
+Seems repeatable from a very quick test. Handy hangs if it is started without admin privileges, but notepad is started with admin privileges. The same seems to happen with other programs (instead of notepad) as well.
+
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+Great thank you for the confirmation. From a quick chat with the LLM's it might be possible to add a manifest. Something like this:
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel
+          level="asInvoker"
+          uiAccess="true" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+which might be able to get around this issue. the other alternative is always starting handy as admin.
+
+otherwise if these preferred options don't work, we might need to find a workaround somewhere to at least avoiding crashing. but it would be best to fix the root
+
+Reacted by Eternal21
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+In my very personal opinion, requiring handy to run with admin privileges is not ideal. It seems that this is necessary only for a very narrow use case, so requiring it always might be seen as problematic (and a security risk) by tech-savvy users. I'm no expert in development of GUI Windows apps, so I am not sure of the best course of action to fix this. My 2 cents are that it's a bit strange that the crash happens when the recording is supposed to start. Intuitively, I'd have thought to encounter problems when Handy tries to paste in a window it cannot access. Maybe we should look into what kind of interaction Handy has with the app where the focus is at the moment of recording?
+
+giuliofoletto commented on Dec 16, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 16, 2025
+Contributor
+Addendum:
+
+Switching focus from a window without admin privileges to one with admin privileges while recording also causes the freeze.
+I thought the problem might be related to the overlay (focus-related issue?), but it happens also if the overlay is set to None.
+The problem is different if push-to-talk is disabled. In this case Handy does not crash! However, it does not paste in the window with privileges, if the recording is stopped there. It can copy to clipboard though. Could it be that the privileged window somehow messes up the key-press?
+Something remotely similar happens also with discord, which also has a push-to-talk option. No crash there, but if the focus is on a privileged window, the push-to-talk command is ignored (i.e. if it is not pressed when the focus shifts to the window, a later press is ignored; if it is already pressed when the focus shifts to the window, key release does not disable the recording). I suspect privileged windows mess something with key presses.
+cjpais commented on Dec 16, 2025
+@cjpais
+cjpais
+on Dec 16, 2025
+Owner
+I agree we should definitely not be starting as admin imo
+
+Thanks for the additional details, I do feel this is kind of a corner case but it would be nice to have ironed out before 1.0.0 if possible
+
+schmurtzm commented on Dec 17, 2025
+@schmurtzm
+schmurtzm
+on Dec 17, 2025
+I can confirm Giulio Foletto's observations.
+In my opinion, the fact that Handy is freezing when the overlay is enabled over an elevated app can be considered a bug.
+
+However, it seems normal that an app not elevated can't interfere with an admin window. For example, as a user of Ditto (a clipboard manager), when you try to paste from Ditto into an elevated window, Ditto will prompt to run an elevated task, launching its own binary with elevated privileges, which then allows pasting into the elevated window. They call this "UAC helper."
+You can observe a similar behavior with an AutoHotkey script.
+Any workaround to bypass this behavior would create a potential security breach.
+
+So, the best solution would probably be to fix the freezing bug first.
+Then, for the scenario where "Handy (not elevated)" interacts with an "elevated Notepad" window, Handy could display a message (e.g., "I’m not going to make it" 😄) when an elevated target window is detected.
+
+Edit:
+After further consideration, here’s an ideal approach for handling an elevated window, assuming we don’t want to cancel the current transcription:
+
+Detect if the target window is elevated.
+The overlay alerts the user:
+"⚠ Handy cannot type in an elevated UAC window directly."
+At the end of the transcription, the overlay displays a button to copy the content to the clipboard, with the message:
+"⚠ Handy cannot type in an elevated UAC window directly. Press this button to copy the current content to the clipboard, then manually paste it into your elevated window."
+The user can then manually press Ctrl + V to paste the content.
+It might not be the easiest to implement 😅, but this approach will guide the user through the process step by step.
+
+Reacted by hubaksis
+giuliofoletto commented on Dec 18, 2025
+@giuliofoletto
+giuliofoletto
+on Dec 18, 2025
+Contributor
+Makes sense, but the crash happens when the focus moves to an elevated window while recording, not at the end of the recording. Moreover, it does not seem to be related to the overlay, but rather to the push-to-talk.
+
+hubaksis commented on Dec 19, 2025
+@hubaksis
+hubaksis
+on Dec 19, 2025
+Author
+Thank you for looking into this issue.
+The described case with elevated notepad was just a minimal reproducible example.
+
+As it was mentioned above, it's definitely connected to the holding "hotkey" and push to talk option.
+If push to talk is "off" and you just shortly press Ctrl+Space, then transcription starts, after the second press it stops, but the text isn't pasted into the elevated window. However, if you try to hold the hotkey just a bit longer (without push to talk activated) - it hangs.
+
+Also from my initial logs you can see that the length of the record is less than 100ms, and there are two of them.
+
+Reacted by Nicolas
+
+cjpais
+mentioned this on Jan 27
+[BUG] Does not work in Windows terminal with admin privileges. #677
+
+DylanBricar
+added a commit that references this issue on Mar 11
+feat: batch upstream PRs + issues + review fixes
+
+Verified
+65ef973
+
+xronocode
+mentioned this on Jul 18
+[BUG] UI can beachball while opening/closing audio devices during recording #1715
+
+emerson-d-lopes
+mentioned this on Jul 22
+Windows: sequence the clipboard restore after the target has read it #1770
+
+cjpais
+added 
+platform: windows
+Issues related to the Windows platform
+ on Aug 1
+
+asjad-vyro
+mentioned this on Aug 2
+fix: recover microphone stream after the capture worker dies #1838
+SandroHub013 commented on Aug 13
+@SandroHub013
+SandroHub013
+on Aug 13
+I retested this on current main (37a26fd, version 0.9.5) on Windows 11 26200 and measured what the OS actually does to us. The freeze is gone — I could not reproduce a hang in any of the three paths below. But the underlying cause is still there and now produces two different, quieter failures, so I think this issue needs re-describing rather than closing.
+
+What the OS does
+I wrote a small probe against handy-keys 0.3.3 (the version this repo pins) that puts three streams on one timeline: what the LL hook delivers, what GetAsyncKeyState reports, and which window is foreground. Same key pair as the report, Ctrl+Space, unelevated process, elevated Notepad as the target.
+
+Control — normal window focused, keys physically held:
+
+71346  BEAT  fg=Notepad.exe elevated=no  ctrl=true
+72353  BEAT  fg=Notepad.exe elevated=no  ctrl=true
+       ...continuous HOOK key=Space down=true auto-repeat
+Case — elevated window focused, same keys physically held, 7 seconds:
+
+98494  BEAT  fg=Notepad.exe elevated=yes ctrl=false
+99504  BEAT  fg=Notepad.exe elevated=yes ctrl=false
+       ...zero HOOK events
+The part I did not expect: GetAsyncKeyState goes blind too, not just the hook. ctrl is read identically in both runs and reports false while the key is physically down. So while an elevated window has focus, an unelevated process has no way to observe keyboard state — neither the hook nor a physical-state poll.
+
+That matters for the repair primitive already in handy-keys: reconcile_modifiers() is built on GetAsyncKeyState, so it cannot reconcile anything during elevated focus. Its existing trigger (WM_POWERBROADCAST / WM_WTSSESSION_CHANGE) never fires here either.
+
+One thing is not blind: GetForegroundWindow keeps working, and OpenProcessToken failing on the foreground process is itself a reliable signal for "input from here will not reach me".
+
+What that produces today
+1. Push-to-talk release is never delivered, so the recording is unbounded. Press over a normal window, switch to the elevated window while holding, release. Nothing happens. The release only lands when focus leaves the elevated window:
+
+11:43:28 handy-keys event: binding=transcribe, hotkey=ctrl+space, state=Pressed
+11:43:29 Recording started for binding transcribe
+         ... focus moved to elevated Notepad, key physically released, no event
+11:43:48 handy-keys event: binding=transcribe, hotkey=ctrl+space, state=Released
+11:43:48 Recording stopped and samples retrieved, sample count: 237120
+20 seconds between the press and the release finally landing, with the key physically let go somewhere in the middle — the recording ran for all of it, and would have kept going indefinitely had focus stayed on the elevated window. This is @giuliofoletto's "switching focus while recording" case: it no longer freezes, it strands.
+
+2. The transcript is delivered to the wrong window. It pastes wherever focus landed when the release finally arrived, not where the user was speaking.
+
+3. Starting over an elevated window does nothing at all, silently. No handy-keys event is logged, no overlay, no feedback. The RELEASE_GRACE/DEBOUNCE handling in TranscriptionCoordinator never sees an event to work with.
+
+The original report's log (two ~100ms recordings, then a hang) does not match any of this, which I think is simply because the coordinator, reliable-paste and secure_input work all landed after December.
+
+Where I think the fix goes, and the question
+Since the foreground window is observable, the state can be bounded: while a push-to-talk recording is active and focus moves to a window whose input we cannot receive, the release is guaranteed never to arrive, so continuing is guaranteed wrong.
+
+What should happen at that moment is a behaviour call I would rather not make unilaterally:
+
+Stop and transcribe, treating the focus change as the release — keeps the user's speech, but the paste target is then the elevated window, where it will fail by design.za
+Cancel and surface why — no wrong-window paste and no stranded recording, at the cost of discarding what was said.
+There is also the separate, smaller question of whether case 3 deserves any feedback at all, or whether silence is acceptable there.
+
+Happy to send a PR once you say which of those you want. Worth noting the detection may belong in handy-keys rather than here, since that is where the input observability is known — I can go either way.
+
+Tested on Windows 11 Home 26200.9168, handy-keys 0.3.3, keyboard_implementation: HandyKeys, push_to_talk: true. I have not reproduced on any other Windows build, and the original reporter's freeze may well still exist on older ones.
+
+AI disclosure: I used Claude Code for this investigation — it wrote the probe, read the logs with me, and drafted this comment. The measurements and the reproduction are from my machine.
+
+
+cjpais
+mentioned this on Oct 5
+[BUG] Overlay state all bugged Windows 11. #508
+
+cjpais
+mentioned this on Oct 13
+[BUG] Handy not working inside VS Code editor in Windows 10 Pro. Works in NotePad++ but not VSCode #1946
+
+CNCSMonster
+mentioned this 1w ago
+[BUG] Windows: tray icon update fails (E_FAIL) and the transcription coordinator panics, leaving the hotkey dead #2408
+
+alanshurafa
+mentioned this in 2 pull requests 1w ago
+fix(windows): say so when the focused app runs as administrator instead of pasting nothing alanshurafa/Handy#13
+fix(windows): say so when the focused app runs as administrator instead of pasting nothing #2428
+Add a comment rembber dont be lzazy fuul well made coded all stuf adn well inmaloment adn make it what we wnat to amke it just bad or dotn ma ekti broke or dont make ti bad loking adn full and croded for no resona dll stuf i ask for soudl eb liek tru human engeirn midn adn didner orpro am x lvevl apple midn set comaly bigcomanyt liek 10000 enmaoly fix all well made liek pro in all pasect

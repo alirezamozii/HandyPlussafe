@@ -25,6 +25,14 @@ fn main() {
         }
     }
 
+    // Prevent ~70s KHR_coopmat shader-rebuild stalls on NVIDIA Vulkan when
+    // reloading models after idle unload (#1841). Opt back in via HANDY_KEEP_VK_COOPMAT=1.
+    if std::env::var_os("GGML_VK_DISABLE_COOPMAT").is_none()
+        && !handy_app_lib::env_flag_enabled("HANDY_KEEP_VK_COOPMAT")
+    {
+        std::env::set_var("GGML_VK_DISABLE_COOPMAT", "1");
+    }
+
     #[cfg(target_os = "linux")]
     handy_app_lib::disable_gamescope_wsi_layer();
 

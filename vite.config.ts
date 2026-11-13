@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 
 const host = process.env.TAURI_DEV_HOST;
+const isTauri = Boolean(process.env.TAURI_ENV_PLATFORM || host);
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
@@ -31,11 +32,12 @@ export default defineConfig(async () => ({
   //
   // 1. prevent vite from obscuring rust errors
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // 2. tauri expects a fixed port when running inside Tauri; web preview uses port 3000
   server: {
-    port: 1420,
+    port: isTauri ? 1420 : 3000,
     strictPort: true,
-    host: host || false,
+    host: isTauri ? host || false : "0.0.0.0",
+    allowedHosts: isTauri ? undefined : true,
     hmr: host
       ? {
           protocol: "ws",

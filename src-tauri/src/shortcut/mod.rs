@@ -922,6 +922,57 @@ pub fn update_custom_words(app: AppHandle, words: Vec<String>) -> Result<(), Str
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_wake_word_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.wake_word_enabled = enabled;
+    settings::write_settings(&app, settings);
+    crate::wake_word::sync_with_settings(&app);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "wake_word_enabled",
+            "value": enabled
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_wake_words(app: AppHandle, words: Vec<String>) -> Result<(), String> {
+    let cleaned = crate::wake_word::sanitize_wake_words(words);
+    let mut settings = settings::get_settings(&app);
+    settings.wake_words = cleaned.clone();
+    settings::write_settings(&app, settings);
+    crate::wake_word::sync_with_settings(&app);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "wake_words",
+            "value": cleaned
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_voice_edit_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.voice_edit_enabled = enabled;
+    settings::write_settings(&app, settings);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "voice_edit_enabled",
+            "value": enabled
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_word_correction_threshold_setting(
     app: AppHandle,
     threshold: f64,

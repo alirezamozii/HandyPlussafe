@@ -389,6 +389,53 @@
           "push_to_talk": "단축키를 누르고 있는 동안 녹음합니다",
           "toggle": "단축키를 탭하면 녹음을 시작하고, 다시 탭하면 중지합니다"
         }
+      },
+      "wakeWord": {
+        "groupTitle": "Voice Activation",
+        "toggle": {
+          "title": "Wake-Word Hands-Free Mode",
+          "description": "Listen continuously for your trigger phrases to start dictation without pressing a key."
+        },
+        "phrases": {
+          "title": "Trigger Words & Phrases",
+          "description": "Say any configured phrase to start dictating automatically. Boundary matching ignores accidental substrings.",
+          "placeholder": "Add wake phrase (e.g. computer)",
+          "add": "Add",
+          "remove": "Remove wake phrase {{word}}",
+          "duplicate": "\"{{word}}\" is already in your wake-word list",
+          "limitReached": "You can add up to {{max}} wake phrases",
+          "resetTooltip": "Restore default wake phrases"
+        },
+        "status": {
+          "off": "Off",
+          "armed": "Armed",
+          "triggered": "Triggered: {{word}}",
+          "noWords": "Add a phrase",
+          "unavailable": "Mic unavailable"
+        },
+        "test": {
+          "title": "Test Wake Phrase",
+          "description": "Simulate a spoken sentence containing one of your wake words to verify hands-free activation.",
+          "placeholder": "e.g. {{sample}} write down my notes",
+          "button": "Test Phrase",
+          "noMatch": "Phrase didn't match any configured wake word"
+        },
+        "voiceEdit": {
+          "title": "Hands-Free Voice Editing (Jarvis Mode)",
+          "description": "Say commands like \"undo\", \"remove <word>\", \"replace <old> with <new>\", or \"replace from <start> to <end> with <new>\" to edit your last dictation.",
+          "studioTitle": "Voice Edit & Range Replace Studio",
+          "studioDescription": "Test hands-free voice editing commands against a live draft transcript.",
+          "draftLabel": "Active Draft Transcript",
+          "commandPlaceholder": "e.g. replace from old cloud to way too slow with local Rust engine",
+          "runButton": "Apply Voice Edit",
+          "resetButton": "Reset Draft",
+          "presetReplace": "Replace word",
+          "presetRange": "Replace from X to Y",
+          "presetRemove": "Remove word",
+          "presetUndo": "Undo last edit",
+          "appliedToast": "Voice edit applied ({{kind}})",
+          "noMatchToast": "Normal dictation appended (no edit command matched)"
+        }
       }
     },
     "models": {
@@ -883,7 +930,8 @@
       "sourceCode": {
         "title": "소스 코드",
         "description": "소스 코드 보기 및 기여",
-        "button": "GitHub에서 보기"
+        "button": "GitHub에서 보기",
+        "upstreamButton": "Upstream Handy"
       },
       "supportDevelopment": {
         "title": "개발 지원",
@@ -913,7 +961,12 @@
     "portableUpdateMessage": "포터블 설치는 자동으로 업데이트할 수 없습니다. 아래에서 사용 중인 시스템에 맞는 설치 프로그램을 다운로드해 실행하고 같은 폴더에 설치하세요. Data/ 폴더(설정, 모델, 녹음)는 그대로 유지됩니다.",
     "portableUpdateButton": "설치 프로그램 다운로드",
     "portableUpdateBrowseMessage": "포터블 설치는 자동으로 업데이트할 수 없습니다. GitHub Releases에서 사용 중인 시스템에 맞는 최신 버전을 다운로드해 같은 폴더에 설치하세요. Data/ 폴더(설정, 모델, 녹음)는 그대로 유지됩니다.",
-    "portableUpdateBrowseButton": "GitHub Releases 열기"
+    "portableUpdateBrowseButton": "GitHub Releases 열기",
+    "wakeWord": {
+      "armed": "Wake: {{count}} armed",
+      "triggered": "Triggered: {{word}}",
+      "noPhrases": "Wake: add a phrase"
+    }
   },
   "whatsNew": {
     "title": "Handy v{{version}}의 새 소식"

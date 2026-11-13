@@ -31,6 +31,8 @@ mod transcription_hook;
 mod tray;
 mod tray_i18n;
 mod utils;
+pub mod voice_edit;
+mod wake_word;
 pub mod webkit_renderer;
 
 pub use cli::CliArgs;
@@ -399,6 +401,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);
+
+    // Start background wake-word voice activation monitor (only active when enabled)
+    wake_word::init(app_handle);
 }
 
 #[tauri::command]
@@ -729,6 +734,9 @@ pub fn run(cli_args: CliArgs) {
             shortcut::delete_post_process_prompt,
             shortcut::set_post_process_selected_prompt,
             shortcut::update_custom_words,
+            shortcut::change_wake_word_enabled_setting,
+            shortcut::update_wake_words,
+            shortcut::change_voice_edit_enabled_setting,
             shortcut::suspend_all_bindings,
             shortcut::resume_all_bindings,
             shortcut::change_mute_while_recording_setting,
@@ -1016,7 +1024,7 @@ pub fn run(cli_args: CliArgs) {
             // for portable mode (redirects WebView2 cache to portable Data dir)
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
-                    .title("Handy")
+                    .title("Handy+")
                     .inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
                     .min_inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
                     .resizable(true)
@@ -1154,24 +1162,34 @@ pub fn run(cli_args: CliArgs) {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
+                let settings = get_settings(window.app_handle());
+                let no_tray_cli = window
+                    .app_handle()
+                    .try_state::<CliArgs>()
+                    .map(|args| args.no_tray)
+                    .unwrap_or(false);
+                let tray_visible = settings.show_tray_icon && !no_tray_cli;
+
+                // When the system tray icon is disabled (via settings or --no-tray),
+                // closing the main window quits the application cleanly instead of
+                // leaving an unrecoverable background process (#1005).
+                if !tray_visible {
+                    window.app_handle().exit(0);
+                    return;
+                }
+
                 api.prevent_close();
                 let _res = window.hide();
 
                 #[cfg(target_os = "macos")]
                 {
-                    let settings = get_settings(window.app_handle());
-                    let tray_visible =
-                        settings.show_tray_icon && !window.app_handle().state::<CliArgs>().no_tray;
-                    if tray_visible {
-                        // Tray is available: hide the dock icon, app lives in the tray
-                        let res = window
-                            .app_handle()
-                            .set_activation_policy(tauri::ActivationPolicy::Accessory);
-                        if let Err(e) = res {
-                            log::error!("Failed to set activation policy: {}", e);
-                        }
+                    // Tray is available: hide the dock icon, app lives in the tray
+                    let res = window
+                        .app_handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    if let Err(e) = res {
+                        log::error!("Failed to set activation policy: {}", e);
                     }
-                    // No tray: keep the dock icon visible so the user can reopen
                 }
             }
             tauri::WindowEvent::ThemeChanged(theme) => {

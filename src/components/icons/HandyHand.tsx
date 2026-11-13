@@ -1,17 +1,17 @@
 const HandyHand = ({
   width,
   height,
+  className,
 }: {
   width?: number | string;
   height?: number | string;
-  // The sidebar passes a className for its icons; the hand ignores it.
   className?: string;
 }) => (
   <svg
     width={width || 126}
     height={height || 135}
     viewBox="0 0 126 135"
-    className="fill-text stroke-text"
+    className={`fill-current stroke-current ${className ?? ""}`.trim()}
     xmlns="http://www.w3.org/2000/svg"
   >
     <path

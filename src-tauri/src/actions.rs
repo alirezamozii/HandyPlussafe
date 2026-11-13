@@ -158,9 +158,27 @@ fn strip_think_block(s: &str) -> &str {
 }
 
 /// Build a system prompt from the user's prompt template.
-/// Removes `${output}` placeholder since the transcription is sent as the user message.
+/// Removes `${output}` placeholder and any resulting empty `<transcript></transcript>`
+/// wrapper (#1261 / #1310) since the transcription is sent in the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
-    prompt_template.replace("${output}", "").trim().to_string()
+    let without_output = prompt_template.replace("${output}", "");
+    let cleaned = if let (Some(start), Some(end)) = (
+        without_output.find("<transcript>"),
+        without_output.find("</transcript>"),
+    ) {
+        let inner = &without_output[start + "<transcript>".len()..end];
+        if inner.trim().is_empty() {
+            let mut s = String::with_capacity(without_output.len());
+            s.push_str(&without_output[..start]);
+            s.push_str(&without_output[end + "</transcript>".len()..]);
+            s.replace("The above is a transcript", "The user message is a transcript")
+        } else {
+            without_output
+        }
+    } else {
+        without_output
+    };
+    cleaned.trim().to_string()
 }
 
 /// Returns `true` when a transcription has no meaningful content to
@@ -297,7 +315,7 @@ async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = build_system_prompt(&prompt);
-        let user_content = transcription.to_string();
+        let user_content = format!("<transcript>\n{}\n</transcript>", transcription);
 
         // Handle Apple Intelligence separately since it uses native Swift APIs
         if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
@@ -505,6 +523,24 @@ pub(crate) async fn process_transcription_output(
         }
     }
 
+    // Hands-Free Voice Editing ("Jarvis Mode"): if enabled and the dictated utterance
+    // is a voice-edit command (e.g. "replace X with Y", "remove X", "replace from X to Y with Z", "undo"),
+    // transform the previous dictation in-place instead of typing the literal command.
+    if settings.voice_edit_enabled {
+        if let Some(edit_outcome) = crate::voice_edit::try_apply_voice_edit_to_memory(
+            &final_text,
+            &settings.wake_words,
+        ) {
+            debug!(
+                "Voice Edit applied ({:?}): {}",
+                edit_outcome.kind, edit_outcome.summary
+            );
+            final_text = edit_outcome.updated_text;
+        } else if !final_text.trim().is_empty() {
+            crate::voice_edit::record_dictated_text(&final_text);
+        }
+    }
+
     ProcessedTranscription {
         final_text,
         post_processed_text,
@@ -616,6 +652,13 @@ impl ShortcutAction for TranscribeAction {
         );
         debug!("Microphone mode - always_on: {}", is_always_on);
 
+        // When audio feedback is disabled, apply system mute immediately before
+        // opening/starting microphone capture so the first words of playing media
+        // (e.g. YouTube) are never recorded (#642).
+        if !settings.audio_feedback {
+            rm.apply_mute();
+        }
+
         let mut recording_error: Option<anyhow::Error> = None;
         let recording_start_time = Instant::now();
         match rm.try_start_recording(&binding_id, vad_policy) {
@@ -627,6 +670,7 @@ impl ShortcutAction for TranscribeAction {
                 let generation = readiness.generation();
                 let app_clone = app.clone();
                 let rm_clone = Arc::clone(&rm);
+                let audio_feedback_enabled = settings.audio_feedback;
                 std::thread::spawn(move || {
                     if !readiness.wait() {
                         debug!("Microphone readiness wait ended without receiving samples");
@@ -658,17 +702,21 @@ impl ShortcutAction for TranscribeAction {
 
                     // The start chime is a readiness cue, so it must follow the
                     // first real input callback rather than Stream::play() or a
-                    // fixed delay. The helper returns immediately when feedback
-                    // is disabled; mute still follows the same readiness point.
-                    if rm_clone.is_recording_readiness_current(generation) {
+                    // fixed delay. When audio feedback is enabled, mute after the
+                    // chime finishes playing so the chime itself is audible.
+                    if audio_feedback_enabled && rm_clone.is_recording_readiness_current(generation)
+                    {
                         play_feedback_sound_blocking(&app_clone, SoundType::Start);
-                    }
-                    if rm_clone.is_recording_readiness_current(generation) {
-                        rm_clone.apply_mute();
+                        if rm_clone.is_recording_readiness_current(generation) {
+                            rm_clone.apply_mute();
+                        }
                     }
                 });
             }
             Err(e) => {
+                if !settings.audio_feedback {
+                    rm.remove_mute();
+                }
                 debug!("Failed to start recording: {}", e);
                 recording_error = Some(e);
             }
@@ -729,12 +777,6 @@ impl ShortcutAction for TranscribeAction {
             show_transcribing_overlay(app);
         }
 
-        // Unmute before playing audio feedback so the stop sound is audible
-        rm.remove_mute();
-
-        // Play audio feedback for recording stop
-        play_feedback_sound(app, SoundType::Stop);
-
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
         let cancel_generation = rm.cancel_generation();
@@ -747,7 +789,15 @@ impl ShortcutAction for TranscribeAction {
             );
 
             let stop_recording_time = Instant::now();
-            if let Some(samples) = rm.stop_recording(&binding_id, cancel_generation) {
+            let captured_samples = rm.stop_recording(&binding_id, cancel_generation);
+
+            // Unmute only AFTER stop_recording() has finished draining the microphone
+            // buffer (including any extra_recording_buffer_ms tail) so unmuted media
+            // audio and the stop chime are never captured in the recording (#642).
+            rm.remove_mute();
+            play_feedback_sound(&ah, SoundType::Stop);
+
+            if let Some(samples) = captured_samples {
                 // Read now: by the time transcribing ends, another take may
                 // have replaced it.
                 let input_silent = rm.last_input_silent();

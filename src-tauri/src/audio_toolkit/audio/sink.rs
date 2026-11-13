@@ -137,8 +137,8 @@ impl CaptureSink {
     }
 
     /// Hands back the recording and the detector. Logs what VAD still held
-    /// back when the recording stopped.
-    pub fn finish(self) -> CapturedAudio {
+    /// back when the recording stopped, and rescues any uncommitted voiced frames.
+    pub fn finish(mut self) -> CapturedAudio {
         // Diagnostic for audio still withheld when capture stopped; it is not
         // conclusive in either direction.
         if self.policy != VadPolicy::Disabled {
@@ -153,6 +153,10 @@ impl CaptureSink {
                     report.onset_counter,
                     report.hangover_counter
                 );
+            }
+            let rescued = self.vad.detector.flush_tail();
+            if !rescued.is_empty() {
+                Self::emit(&mut self.samples, &self.on_audio, &rescued);
             }
         }
         CapturedAudio {
