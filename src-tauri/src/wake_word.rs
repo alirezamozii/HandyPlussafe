@@ -1,4 +1,6 @@
-use crate::audio_toolkit::vad::{EarshotVad, VadFrame, VoiceActivityDetector, EARSHOT_FRAME_SAMPLES};
+use crate::audio_toolkit::vad::{
+    EarshotVad, VadFrame, VoiceActivityDetector, EARSHOT_FRAME_SAMPLES,
+};
 use crate::helpers::clamshell;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::transcription::TranscriptionManager;
@@ -144,10 +146,7 @@ fn desired_mic_name(settings: &AppSettings) -> Option<String> {
 fn resolve_device_id(mic_name: Option<&str>) -> Option<String> {
     let target = mic_name?;
     match handy_recorder::list_input_devices() {
-        Ok(devices) => devices
-            .into_iter()
-            .find(|d| d.name == target)
-            .map(|d| d.id),
+        Ok(devices) => devices.into_iter().find(|d| d.name == target).map(|d| d.id),
         Err(err) => {
             debug!("Wake-word could not enumerate input devices ({err}); using system default");
             None

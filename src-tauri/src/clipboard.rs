@@ -878,7 +878,15 @@ fn send_backspaces_via_wtype(count: usize) -> Result<(), String> {
 fn send_backspaces_via_xdotool(count: usize) -> Result<(), String> {
     let repeat = count.to_string();
     let output = Command::new("xdotool")
-        .args(["key", "--clearmodifiers", "--delay", "2", "--repeat", &repeat, "BackSpace"])
+        .args([
+            "key",
+            "--clearmodifiers",
+            "--delay",
+            "2",
+            "--repeat",
+            &repeat,
+            "BackSpace",
+        ])
         .output()
         .map_err(|e| format!("Failed to execute xdotool: {}", e))?;
     if !output.status.success() {
@@ -1002,7 +1010,9 @@ fn backspace_previous_paste(
         return Ok(());
     }
 
-    with_enigo(app_handle, move |enigo| input::send_backspaces(enigo, count))
+    with_enigo(app_handle, move |enigo| {
+        input::send_backspaces(enigo, count)
+    })
 }
 
 /// Pastes `text` into the focused app. Call from a worker thread, never the main
