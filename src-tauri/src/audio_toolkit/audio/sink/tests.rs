@@ -176,3 +176,29 @@ fn finish_returns_the_detector_for_the_next_recording() {
     assert_eq!(captured.vad.frame_samples(), FRAME);
     assert_eq!(captured.vad.hangover_for(VadPolicy::Streaming), 20);
 }
+
+#[test]
+fn auto_stop_callback_fires_after_speech_and_silence() {
+    let fired = Arc::new(Mutex::new(false));
+    let fired_clone = Arc::clone(&fired);
+    let mut h = harness(VadPolicy::Offline);
+    h.sink = h.sink.with_auto_stop(
+        100,
+        Arc::new(move || {
+            *fired_clone.lock().unwrap() = true;
+        }),
+    );
+
+    let speech_frame = [1.0; FRAME];
+    let silence_frame = [0.0; FRAME];
+
+    for _ in 0..1000 {
+        h.sink.process_chunk(chunk(&speech_frame, FRAME));
+    }
+    assert!(!*fired.lock().unwrap());
+
+    for _ in 0..400 {
+        h.sink.process_chunk(chunk(&silence_frame, FRAME));
+    }
+    assert!(*fired.lock().unwrap());
+}

@@ -522,7 +522,13 @@ jobs:
               exportNonEmpty("APPLE_PASSWORD", process.env.APPLE_PASSWORD);
               exportNonEmpty("APPLE_TEAM_ID", process.env.APPLE_TEAM_ID);
             } else if (isMac) {
-              console.log("Apple signing credentials not configured; leaving APPLE_* env vars unset for ad-hoc signing.");
+              if (conf.bundle && conf.bundle.macOS) {
+                conf.bundle.macOS.signingIdentity = "-";
+                conf.bundle.macOS.hardenedRuntime = false;
+                delete conf.bundle.macOS.entitlements;
+                changed = true;
+              }
+              console.log("Apple signing credentials not configured; configured ad-hoc signing in tauri.conf.json.");
             }
 
             const hasUpdaterKey = Boolean(

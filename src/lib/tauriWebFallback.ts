@@ -141,6 +141,8 @@ function buildDefaultSettings(): AppSettings {
     wake_word_enabled: false,
     wake_words: [...DEFAULT_WAKE_WORDS],
     voice_edit_enabled: true,
+    auto_stop_enabled: true,
+    auto_stop_silence_ms: 1000,
     model_unload_timeout: "min_5",
     word_correction_threshold: 0.18,
     history_limit: 25,
@@ -674,6 +676,28 @@ async function handleWebInvoke(
       dispatchEvent("settings-changed", {
         setting: "voice_edit_enabled",
         value: webSettings.voice_edit_enabled,
+      });
+      return null;
+    case "change_auto_stop_enabled_setting":
+      webSettings = {
+        ...webSettings,
+        auto_stop_enabled: Boolean(args.enabled),
+      };
+      saveSettingsToStorage(webSettings);
+      dispatchEvent("settings-changed", {
+        setting: "auto_stop_enabled",
+        value: webSettings.auto_stop_enabled,
+      });
+      return null;
+    case "change_auto_stop_silence_ms_setting":
+      webSettings = {
+        ...webSettings,
+        auto_stop_silence_ms: Number(args.silenceMs ?? 1000),
+      };
+      saveSettingsToStorage(webSettings);
+      dispatchEvent("settings-changed", {
+        setting: "auto_stop_silence_ms",
+        value: webSettings.auto_stop_silence_ms,
       });
       return null;
     case "change_extra_recording_buffer_setting":

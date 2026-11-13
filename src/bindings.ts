@@ -368,6 +368,22 @@ async changeVoiceEditEnabledSetting(enabled: boolean) : Promise<Result<null, str
     else return { status: "error", error: e  as any };
 }
 },
+async changeAutoStopEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_auto_stop_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeAutoStopSilenceMsSetting(silenceMs: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_auto_stop_silence_ms_setting", { silenceMs }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Temporarily unregister all bindings while the user is recording a
  * shortcut in the UI. This avoids firing actions while keys are recorded.
@@ -1209,7 +1225,7 @@ language_detection_window_secs?: number;
  * not gated on this — that follows model capability. Migrated from the old
  * `overlay_position` (position `none` → style `None`).
  */
-overlay_style?: OverlayStyle; wake_word_enabled?: boolean; wake_words?: string[]; voice_edit_enabled?: boolean }
+overlay_style?: OverlayStyle; wake_word_enabled?: boolean; wake_words?: string[]; voice_edit_enabled?: boolean; auto_stop_enabled?: boolean; auto_stop_silence_ms?: number }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AutoUnavailableReason = 

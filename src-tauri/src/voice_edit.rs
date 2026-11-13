@@ -6,11 +6,35 @@ use std::sync::{LazyLock, Mutex};
 #[serde(rename_all = "snake_case")]
 pub enum VoiceEditActionKind {
     Undo,
+    SelectAll,
+    Copy,
+    Cut,
+    PasteClipboard,
+    SelectAllCopy,
+    SelectAllDelete,
+    SelectAllPaste,
+    SelectAllCut,
     RemoveTarget,
     ReplaceTarget,
     ReplaceRange,
     DeleteRange,
     None,
+}
+
+impl VoiceEditActionKind {
+    pub fn is_input_action(&self) -> bool {
+        matches!(
+            self,
+            VoiceEditActionKind::SelectAll
+                | VoiceEditActionKind::Copy
+                | VoiceEditActionKind::Cut
+                | VoiceEditActionKind::PasteClipboard
+                | VoiceEditActionKind::SelectAllCopy
+                | VoiceEditActionKind::SelectAllDelete
+                | VoiceEditActionKind::SelectAllPaste
+                | VoiceEditActionKind::SelectAllCut
+        )
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -55,19 +79,21 @@ pub fn try_apply_voice_edit_to_memory(
     custom_prefixes: &[String],
 ) -> Option<VoiceEditOutcome> {
     let mut mem = LAST_DICTATION_MEMORY.lock().ok()?;
-    if mem.current_text.trim().is_empty() {
-        return None;
-    }
+    let current_text = mem.current_text.clone();
+    let previous_snapshot = mem.previous_snapshot.clone();
+
     let outcome = apply_voice_edit(
-        &mem.current_text,
+        &current_text,
         utterance,
         custom_prefixes,
-        Some(&mem.previous_snapshot),
+        Some(&previous_snapshot),
     );
+
     if outcome.matched {
-        let prev = mem.current_text.clone();
-        mem.previous_snapshot = prev;
-        mem.current_text = outcome.updated_text.clone();
+        if !outcome.kind.is_input_action() {
+            mem.previous_snapshot = current_text;
+            mem.current_text = outcome.updated_text.clone();
+        }
         Some(outcome)
     } else {
         None
@@ -279,7 +305,149 @@ pub fn apply_voice_edit(
     let body = strip_outer_punct(strip_leading_prefix(utterance, custom_prefixes));
     let lower = body.to_lowercase();
 
-    // 1. Undo / Scratch That / Remove All
+    // 0. Multi-Action Chained Commands
+    if matches!(
+        lower.as_str(),
+        "select all copy"
+            | "select all and copy"
+            | "select all and copy that"
+            | "select all copy that"
+            | "highlight all copy"
+            | "highlight all and copy"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::SelectAllCopy,
+            summary: "Select all and copy to clipboard".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "select all delete"
+            | "select all and delete"
+            | "select all and delete that"
+            | "select all delete that"
+            | "select all remove"
+            | "select all and remove"
+            | "select all clear"
+            | "select all and clear"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::SelectAllDelete,
+            summary: "Select all and delete".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: String::new(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "select all paste"
+            | "select all and paste"
+            | "select all and paste that"
+            | "select all paste clipboard"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::SelectAllPaste,
+            summary: "Select all and paste clipboard".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "select all cut"
+            | "select all and cut"
+            | "select all and cut that"
+            | "highlight all cut"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::SelectAllCut,
+            summary: "Select all and cut to clipboard".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: String::new(),
+        };
+    }
+
+    // 1. Single Input Actions
+    if matches!(
+        lower.as_str(),
+        "select all"
+            | "select all text"
+            | "select everything"
+            | "highlight all"
+            | "highlight everything"
+            | "choose all"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::SelectAll,
+            summary: "Select all text in focused input".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "copy"
+            | "copy that"
+            | "copy this"
+            | "copy text"
+            | "copy selection"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::Copy,
+            summary: "Copy selection to clipboard".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "cut"
+            | "cut that"
+            | "cut this"
+            | "cut text"
+            | "cut selection"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::Cut,
+            summary: "Cut selection to clipboard".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    if matches!(
+        lower.as_str(),
+        "paste"
+            | "paste that"
+            | "paste this"
+            | "paste clipboard"
+            | "paste my clipboard"
+            | "paste from clipboard"
+    ) {
+        return VoiceEditOutcome {
+            matched: true,
+            kind: VoiceEditActionKind::PasteClipboard,
+            summary: "Paste system clipboard into focused input".to_string(),
+            previous_text: current_text.to_string(),
+            updated_text: current_text.to_string(),
+        };
+    }
+
+    // 2. Undo / Scratch That / Clear All
     if matches!(
         lower.as_str(),
         "undo"
@@ -290,6 +458,7 @@ pub fn apply_voice_edit(
             | "delete all"
             | "clear all"
             | "clear that"
+            | "clear everything"
             | "erase all"
     ) {
         let updated = previous_snapshot.unwrap_or("").to_string();
@@ -302,8 +471,15 @@ pub fn apply_voice_edit(
         };
     }
 
-    // 2. Range Replacement: "replace from <start> to <end> with <replacement>"
-    for verb in ["replace from ", "change from ", "swap from "] {
+    // 3. Range Replacement: "replace from/form <start> to <end> with <replacement>"
+    for verb in [
+        "replace from ",
+        "replace form ",
+        "change from ",
+        "change form ",
+        "swap from ",
+        "swap form ",
+    ] {
         if lower.starts_with(verb) && body.is_char_boundary(verb.len()) {
             let rest = &body[verb.len()..];
             for to_sep in [" to ", " through ", " until "] {
@@ -316,7 +492,7 @@ pub fn apply_voice_edit(
                             let end_word = strip_outer_punct(end_part);
                             let replacement_raw = strip_outer_punct(repl_part);
                             if let Some((s, e)) =
-                                find_range_case_insensitive(current_text, start_word, end_word)
+                                find_range_with_fallbacks(current_text, start_word, end_word)
                             {
                                 let removed = &current_text[s..e];
                                 let replacement =
@@ -333,6 +509,18 @@ pub fn apply_voice_edit(
                                     previous_text: current_text.to_string(),
                                     updated_text: normalize_spacing_and_punctuation(&raw_updated),
                                 };
+                            } else {
+                                // Clear command intention: consume without corrupting document
+                                return VoiceEditOutcome {
+                                    matched: true,
+                                    kind: VoiceEditActionKind::ReplaceRange,
+                                    summary: format!(
+                                        "Target range \"{}\" to \"{}\" not found in memory",
+                                        start_word, end_word
+                                    ),
+                                    previous_text: current_text.to_string(),
+                                    updated_text: current_text.to_string(),
+                                };
                             }
                         }
                     }
@@ -341,8 +529,17 @@ pub fn apply_voice_edit(
         }
     }
 
-    // 3. Range Deletion: "delete/remove from <start> to <end>"
-    for verb in ["delete from ", "remove from ", "erase from ", "cut from "] {
+    // 4. Range Deletion: "delete/remove from/form <start> to <end>"
+    for verb in [
+        "delete from ",
+        "delete form ",
+        "remove from ",
+        "remove form ",
+        "erase from ",
+        "erase form ",
+        "cut from ",
+        "cut form ",
+    ] {
         if lower.starts_with(verb) && body.is_char_boundary(verb.len()) {
             let rest = &body[verb.len()..];
             for to_sep in [" to ", " through ", " until "] {
@@ -350,7 +547,7 @@ pub fn apply_voice_edit(
                     let start_word = strip_outer_punct(start_part);
                     let end_word = strip_outer_punct(end_part);
                     if let Some((s, e)) =
-                        find_range_case_insensitive(current_text, start_word, end_word)
+                        find_range_with_fallbacks(current_text, start_word, end_word)
                     {
                         let raw_updated = format!("{} {}", &current_text[..s], &current_text[e..]);
                         return VoiceEditOutcome {
@@ -360,13 +557,24 @@ pub fn apply_voice_edit(
                             previous_text: current_text.to_string(),
                             updated_text: normalize_spacing_and_punctuation(&raw_updated),
                         };
+                    } else {
+                        return VoiceEditOutcome {
+                            matched: true,
+                            kind: VoiceEditActionKind::DeleteRange,
+                            summary: format!(
+                                "Target range \"{}\" to \"{}\" not found in memory",
+                                start_word, end_word
+                            ),
+                            previous_text: current_text.to_string(),
+                            updated_text: current_text.to_string(),
+                        };
                     }
                 }
             }
         }
     }
 
-    // 4. Targeted Replacement: "replace <target> with/to <replacement>"
+    // 5. Targeted Replacement: "replace <target> with/to <replacement>"
     for verb in ["replace ", "change ", "swap ", "substitute "] {
         if lower.starts_with(verb) && body.is_char_boundary(verb.len()) {
             let rest = &body[verb.len()..];
@@ -378,7 +586,7 @@ pub fn apply_voice_edit(
                 if let Some((target_part, repl_part)) = split_once_case_insensitive(rest, sep) {
                     let target = strip_outer_punct(target_part);
                     let replacement_raw = strip_outer_punct(repl_part);
-                    if let Some((s, e)) = find_last_case_insensitive(current_text, target) {
+                    if let Some((s, e)) = find_last_with_fallbacks(current_text, target) {
                         let removed = &current_text[s..e];
                         let replacement = match_case_if_capitalized(removed, replacement_raw);
                         let (prefix, suffix) = (&current_text[..s], &current_text[e..]);
@@ -390,13 +598,21 @@ pub fn apply_voice_edit(
                             previous_text: current_text.to_string(),
                             updated_text: normalize_spacing_and_punctuation(&raw_updated),
                         };
+                    } else {
+                        return VoiceEditOutcome {
+                            matched: true,
+                            kind: VoiceEditActionKind::ReplaceTarget,
+                            summary: format!("Target \"{}\" not found in memory", target),
+                            previous_text: current_text.to_string(),
+                            updated_text: current_text.to_string(),
+                        };
                     }
                 }
             }
         }
     }
 
-    // 5. Targeted Removal: "remove/delete <target>"
+    // 6. Targeted Removal: "remove/delete <target>"
     for verb in ["remove ", "delete ", "erase ", "drop "] {
         if lower.starts_with(verb) && body.is_char_boundary(verb.len()) {
             let rest = &body[verb.len()..];
@@ -405,7 +621,7 @@ pub fn apply_voice_edit(
                 .or_else(|| rest.strip_prefix("the phrase "))
                 .unwrap_or(rest);
             let target = strip_outer_punct(rest);
-            if let Some((s, e)) = find_last_case_insensitive(current_text, target) {
+            if let Some((s, e)) = find_last_with_fallbacks(current_text, target) {
                 let raw_updated = format!("{} {}", &current_text[..s], &current_text[e..]);
                 return VoiceEditOutcome {
                     matched: true,
@@ -413,6 +629,14 @@ pub fn apply_voice_edit(
                     summary: format!("Remove \"{}\"", target),
                     previous_text: current_text.to_string(),
                     updated_text: normalize_spacing_and_punctuation(&raw_updated),
+                };
+            } else {
+                return VoiceEditOutcome {
+                    matched: true,
+                    kind: VoiceEditActionKind::RemoveTarget,
+                    summary: format!("Target \"{}\" not found in memory", target),
+                    previous_text: current_text.to_string(),
+                    updated_text: current_text.to_string(),
                 };
             }
         }
@@ -425,6 +649,41 @@ pub fn apply_voice_edit(
         previous_text: current_text.to_string(),
         updated_text: current_text.to_string(),
     }
+}
+
+fn find_last_with_fallbacks(haystack: &str, needle: &str) -> Option<(usize, usize)> {
+    if let Some(span) = find_last_case_insensitive(haystack, needle) {
+        return Some(span);
+    }
+    let alt = if needle.eq_ignore_ascii_case("form") {
+        "from"
+    } else if needle.eq_ignore_ascii_case("from") {
+        "form"
+    } else {
+        needle
+    };
+    if alt != needle {
+        return find_last_case_insensitive(haystack, alt);
+    }
+    None
+}
+
+fn find_range_with_fallbacks(
+    haystack: &str,
+    start_phrase: &str,
+    end_phrase: &str,
+) -> Option<(usize, usize)> {
+    if let Some(span) = find_range_case_insensitive(haystack, start_phrase, end_phrase) {
+        return Some(span);
+    }
+    let alt_start = if start_phrase.eq_ignore_ascii_case("form") {
+        "from"
+    } else if start_phrase.eq_ignore_ascii_case("from") {
+        "form"
+    } else {
+        start_phrase
+    };
+    find_range_case_insensitive(haystack, alt_start, end_phrase)
 }
 
 #[cfg(test)]
@@ -463,10 +722,33 @@ mod tests {
     }
 
     #[test]
+    fn test_voice_edit_phonetic_form_and_commands() {
+        let base = "I want to move form here to there.";
+        let r1 = apply_voice_edit(base, "replace from to to with back", &[], None);
+        assert!(r1.matched);
+
+        let sel = apply_voice_edit(base, "select all", &[], None);
+        assert!(sel.matched);
+        assert_eq!(sel.kind, VoiceEditActionKind::SelectAll);
+
+        let copy_cmd = apply_voice_edit(base, "copy that", &[], None);
+        assert!(copy_cmd.matched);
+        assert_eq!(copy_cmd.kind, VoiceEditActionKind::Copy);
+
+        let paste_cmd = apply_voice_edit(base, "paste clipboard", &[], None);
+        assert!(paste_cmd.matched);
+        assert_eq!(paste_cmd.kind, VoiceEditActionKind::PasteClipboard);
+
+        let combo = apply_voice_edit(base, "select all copy", &[], None);
+        assert!(combo.matched);
+        assert_eq!(combo.kind, VoiceEditActionKind::SelectAllCopy);
+    }
+
+    #[test]
     fn test_voice_edit_respects_word_boundaries() {
         let base = "The plan is clear and this issue is tiny.";
         let no_match = apply_voice_edit(base, "remove an", &[], None);
-        assert!(!no_match.matched);
+        assert!(no_match.matched); // matches remove command structure, but doesn't alter base since target 'an' is not found
         assert_eq!(no_match.updated_text, base);
 
         let replaced = apply_voice_edit(base, "replace is with was", &[], None);

@@ -48,12 +48,12 @@ tauri_panel! {
 // width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
 // the window must fit the widest state plus a little slack. The longest notice
 // titles need nearly all of it.
-const OVERLAY_WIDTH: f64 = 296.0;
-const OVERLAY_HEIGHT: f64 = 76.0;
+const OVERLAY_WIDTH: f64 = 304.0;
+const OVERLAY_HEIGHT: f64 = 84.0;
 
 // Live panel max footprint is 392x118 + 28px symmetric stage padding + stroke.
 const OVERLAY_STREAM_WIDTH: f64 = 432.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 160.0;
+const OVERLAY_STREAM_HEIGHT: f64 = 172.0;
 
 const NOTICE_STATE: &str = "notice";
 const LIVE_NOTICE_STATE: &str = "live_notice";

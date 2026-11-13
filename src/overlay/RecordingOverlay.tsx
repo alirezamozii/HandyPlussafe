@@ -15,6 +15,7 @@ import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { noticeDisplay } from "@/lib/notices";
 import type { ModelStateEvent } from "@/lib/types/events";
 import { getLanguageDirection } from "@/lib/utils/rtl";
+import { getEditModeTag } from "@/lib/voiceEdit/engine";
 
 type OverlayState =
   | "recording"
@@ -310,6 +311,11 @@ const RecordingOverlay: React.FC = () => {
     </button>
   );
 
+  const currentStreamString =
+    `${streamText.committed} ${streamText.tentative}`.trim();
+  const editModeInfo = getEditModeTag(currentStreamString);
+  const isEditingMode = !!editModeInfo?.isEditMode;
+
   // dot (left) | waveform (center) | timer + cancel (right) — same structure for
   // pill & panel, so the Live morph is a pure width change.
   const listeningRow = (showTimer: boolean, showCancel: boolean) => (
@@ -319,6 +325,11 @@ const RecordingOverlay: React.FC = () => {
       </div>
       {waveform}
       <div className="sbase-r">
+        {editModeInfo && (
+          <span className="sedit-badge" title={editModeInfo.tag}>
+            {editModeInfo.tag}
+          </span>
+        )}
         {showTimer && <span className="stimer">{fmtTime(elapsed)}</span>}
         {showCancel && cancelBtn}
       </div>
@@ -333,7 +344,14 @@ const RecordingOverlay: React.FC = () => {
         <span className="sspinner" />
       </div>
       <span className="swork-label">{label}</span>
-      <div className="sbase-r">{showCancel && cancelBtn}</div>
+      <div className="sbase-r">
+        {editModeInfo && (
+          <span className="sedit-badge" title={editModeInfo.tag}>
+            {editModeInfo.tag}
+          </span>
+        )}
+        {showCancel && cancelBtn}
+      </div>
     </div>
   );
 
@@ -382,8 +400,8 @@ const RecordingOverlay: React.FC = () => {
         <div
           key={session}
           className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""} ${
-            isVisible ? "" : "leaving"
-          } ${noticeClass}`}
+            isEditingMode ? "editing-mode" : ""
+          } ${isVisible ? "" : "leaving"} ${noticeClass}`}
           style={liveNotice && !open ? { width: noticeWidth } : undefined}
           onClick={dismissNotice}
         >
@@ -443,7 +461,9 @@ const RecordingOverlay: React.FC = () => {
     >
       {noticeProbe}
       <div
-        className={`scard compact ${working && isVisible ? "cworking" : ""} ${noticeClass}`}
+        className={`scard compact ${working && isVisible ? "cworking" : ""} ${
+          isEditingMode ? "editing-mode" : ""
+        } ${noticeClass}`}
         style={shownNotice ? { width: noticeWidth } : undefined}
         onClick={dismissNotice}
       >

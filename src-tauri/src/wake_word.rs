@@ -411,7 +411,17 @@ fn run_monitor_loop(app: AppHandle) {
                 }
                 thread::sleep(Duration::from_millis(30));
             }
+            let session_start = Instant::now();
             while audio_mgr.is_recording() {
+                if session_start.elapsed() > Duration::from_secs(30) {
+                    warn!("Wake-word dictation session reached 30s limit; auto-stopping");
+                    signal_handle::send_transcription_input(
+                        &app,
+                        "transcribe",
+                        "WakeWordSafetyTimeout",
+                    );
+                    break;
+                }
                 thread::sleep(Duration::from_millis(100));
             }
         }

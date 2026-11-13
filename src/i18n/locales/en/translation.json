@@ -384,6 +384,15 @@
           "button": "Test Phrase",
           "noMatch": "Phrase didn't match any configured wake word"
         },
+        "autoStop": {
+          "title": "Auto-Stop on Silence",
+          "description": "Automatically finalize and paste transcription when you stop speaking."
+        },
+        "silence": {
+          "title": "Silence Pause Threshold",
+          "description": "How long to wait after speech stops before automatically finalizing dictation (default: 1,000ms).",
+          "presets": "Presets"
+        },
         "voiceEdit": {
           "title": "Hands-Free Voice Editing (Jarvis Mode)",
           "description": "Say commands like \"undo\", \"remove <word>\", \"replace <old> with <new>\", or \"replace from <start> to <end> with <new>\" to edit your last dictation.",

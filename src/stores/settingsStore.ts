@@ -149,6 +149,10 @@ const settingUpdaters: {
   wake_words: (value) => commands.updateWakeWords(value as string[]),
   voice_edit_enabled: (value) =>
     commands.changeVoiceEditEnabledSetting(value as boolean),
+  auto_stop_enabled: (value) =>
+    commands.changeAutoStopEnabledSetting(value as boolean),
+  auto_stop_silence_ms: (value) =>
+    commands.changeAutoStopSilenceMsSetting(value as number),
   word_correction_threshold: (value) =>
     commands.changeWordCorrectionThresholdSetting(value as number),
   paste_delay_ms: (value) =>

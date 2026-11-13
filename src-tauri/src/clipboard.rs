@@ -70,7 +70,8 @@ fn finish_clipboard_paste(
     paste_delay_after_ms: u64,
     restore_clipboard: impl FnOnce(),
 ) -> Result<(), String> {
-    std::thread::sleep(Duration::from_millis(paste_delay_after_ms));
+    let safe_delay = std::cmp::max(paste_delay_after_ms, 120);
+    std::thread::sleep(Duration::from_millis(safe_delay));
     restore_clipboard();
     paste_result
 }
@@ -97,7 +98,8 @@ fn paste_via_clipboard(
     // Write text to clipboard first
     write_text_to_clipboard(app_handle, text)?;
 
-    std::thread::sleep(Duration::from_millis(paste_delay_ms));
+    let safe_delay_before = std::cmp::max(paste_delay_ms, 30);
+    std::thread::sleep(Duration::from_millis(safe_delay_before));
 
     // Capture key injection errors so the original clipboard is restored before
     // propagating them to the caller.
@@ -1017,8 +1019,102 @@ fn backspace_previous_paste(
 
 /// Pastes `text` into the focused app. Call from a worker thread, never the main
 /// thread: it sleeps between steps (input injection hops via `with_enigo`).
+#[allow(dead_code)]
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
     paste_or_replace(text, false, app_handle)
+}
+
+/// Selects all text in the focused control using Cmd+A on macOS and Ctrl+A elsewhere.
+pub fn select_all(app_handle: &AppHandle) -> Result<(), String> {
+    let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    #[cfg(target_os = "linux")]
+    {
+        if Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+a"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+    }
+    with_enigo(app_handle, |enigo| {
+        input::send_select_all(enigo)
+    })
+}
+
+/// Copies the currently selected text using Cmd+C on macOS and Ctrl+C elsewhere.
+pub fn copy_selection(app_handle: &AppHandle) -> Result<(), String> {
+    let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    #[cfg(target_os = "linux")]
+    {
+        if Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+c"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+    }
+    with_enigo(app_handle, |enigo| {
+        input::send_copy(enigo)
+    })
+}
+
+/// Cuts the currently selected text using Cmd+X on macOS and Ctrl+X elsewhere.
+pub fn cut_selection(app_handle: &AppHandle) -> Result<(), String> {
+    let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    #[cfg(target_os = "linux")]
+    {
+        if Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+x"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+    }
+    with_enigo(app_handle, |enigo| {
+        input::send_cut(enigo)
+    })
+}
+
+/// Pastes the current system clipboard into the focused control (Command+V or Ctrl+V).
+pub fn paste_system_clipboard(app_handle: &AppHandle) -> Result<(), String> {
+    let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    #[cfg(target_os = "linux")]
+    {
+        if Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+v"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+    }
+    with_enigo(app_handle, |enigo| {
+        input::send_paste_clipboard(enigo)
+    })
+}
+
+/// Selects all text and copies it to the system clipboard.
+pub fn select_all_and_copy(app_handle: &AppHandle) -> Result<(), String> {
+    select_all(app_handle)?;
+    std::thread::sleep(Duration::from_millis(40));
+    copy_selection(app_handle)
+}
+
+/// Selects all text and deletes it.
+pub fn select_all_and_delete(app_handle: &AppHandle) -> Result<(), String> {
+    select_all(app_handle)?;
+    std::thread::sleep(Duration::from_millis(40));
+    let _paste = PASTE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    with_enigo(app_handle, |enigo| {
+        input::send_backspaces(enigo, 1)
+    })
 }
 
 /// Pastes `text` into the focused app, optionally erasing the previously pasted

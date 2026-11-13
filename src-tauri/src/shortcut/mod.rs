@@ -973,6 +973,38 @@ pub fn change_voice_edit_enabled_setting(app: AppHandle, enabled: bool) -> Resul
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_auto_stop_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.auto_stop_enabled = enabled;
+    settings::write_settings(&app, settings);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "auto_stop_enabled",
+            "value": enabled
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_auto_stop_silence_ms_setting(app: AppHandle, silence_ms: u64) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.auto_stop_silence_ms = silence_ms;
+    settings::write_settings(&app, settings);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "auto_stop_silence_ms",
+            "value": silence_ms
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_word_correction_threshold_setting(
     app: AppHandle,
     threshold: f64,

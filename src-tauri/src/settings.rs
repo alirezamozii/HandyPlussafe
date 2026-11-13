@@ -575,6 +575,10 @@ pub struct AppSettings {
     pub wake_words: Vec<String>,
     #[serde(default = "default_voice_edit_enabled")]
     pub voice_edit_enabled: bool,
+    #[serde(default = "default_auto_stop_enabled")]
+    pub auto_stop_enabled: bool,
+    #[serde(default = "default_auto_stop_silence_ms")]
+    pub auto_stop_silence_ms: u64,
 }
 
 fn default_model() -> String {
@@ -721,6 +725,14 @@ fn default_wake_word_enabled() -> bool {
 
 fn default_wake_words() -> Vec<String> {
     vec!["hey handy".to_string(), "handy start".to_string()]
+}
+
+fn default_auto_stop_enabled() -> bool {
+    true
+}
+
+fn default_auto_stop_silence_ms() -> u64 {
+    1000
 }
 
 fn default_post_process_enabled() -> bool {
@@ -1092,6 +1104,8 @@ pub fn get_default_settings() -> AppSettings {
         wake_word_enabled: default_wake_word_enabled(),
         wake_words: default_wake_words(),
         voice_edit_enabled: default_voice_edit_enabled(),
+        auto_stop_enabled: default_auto_stop_enabled(),
+        auto_stop_silence_ms: default_auto_stop_silence_ms(),
     }
 }
 

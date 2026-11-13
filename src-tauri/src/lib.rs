@@ -737,6 +737,8 @@ pub fn run(cli_args: CliArgs) {
             shortcut::change_wake_word_enabled_setting,
             shortcut::update_wake_words,
             shortcut::change_voice_edit_enabled_setting,
+            shortcut::change_auto_stop_enabled_setting,
+            shortcut::change_auto_stop_silence_ms_setting,
             shortcut::suspend_all_bindings,
             shortcut::resume_all_bindings,
             shortcut::change_mute_while_recording_setting,

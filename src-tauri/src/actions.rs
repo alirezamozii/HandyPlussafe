@@ -475,6 +475,7 @@ pub(crate) struct ProcessedTranscription {
     /// `final_text` is the bare transcript because post-processing failed.
     pub post_process_failed: bool,
     pub voice_edit_applied: bool,
+    pub action_command: Option<crate::voice_edit::VoiceEditActionKind>,
 }
 
 pub(crate) async fn process_transcription_output(
@@ -488,6 +489,7 @@ pub(crate) async fn process_transcription_output(
     let mut post_process_prompt: Option<String> = None;
     let mut post_process_failed = false;
     let mut voice_edit_applied = false;
+    let mut action_command: Option<crate::voice_edit::VoiceEditActionKind> = None;
 
     if post_process {
         // A reply that's blank once cleaned is no better than none.
@@ -539,6 +541,9 @@ pub(crate) async fn process_transcription_output(
                 "Voice Edit applied ({:?}): {}",
                 edit_outcome.kind, edit_outcome.summary
             );
+            if edit_outcome.kind.is_input_action() {
+                action_command = Some(edit_outcome.kind);
+            }
             final_text = edit_outcome.updated_text;
             voice_edit_applied = true;
         } else if !final_text.trim().is_empty() {
@@ -552,6 +557,7 @@ pub(crate) async fn process_transcription_output(
         post_process_prompt,
         post_process_failed,
         voice_edit_applied,
+        action_command,
     }
 }
 
@@ -949,13 +955,17 @@ impl ShortcutAction for TranscribeAction {
                                 return;
                             };
 
-                            if final_text.is_empty() && !processed.voice_edit_applied {
+                            if final_text.is_empty()
+                                && !processed.voice_edit_applied
+                                && processed.action_command.is_none()
+                            {
                                 finish_without_text(&ah, input_silent, sample_count, stop_time);
                             } else {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let post_process_failed = processed.post_process_failed;
                                 let voice_edit_applied = processed.voice_edit_applied;
+                                let action_command = processed.action_command;
                                 let rm_for_paste = Arc::clone(&rm);
                                 // Taken before the paste thread exists, and so
                                 // before the next session can start.
@@ -978,40 +988,150 @@ impl ShortcutAction for TranscribeAction {
                                         // UI while this paste ran.
                                         let owns_ui =
                                             || RECORDING_SESSION.load(Ordering::SeqCst) == session;
-                                        let (outcome, notice) = match utils::paste_or_replace(
-                                            final_text,
-                                            voice_edit_applied,
-                                            ah_clone.clone(),
-                                        ) {
-                                            Ok(()) => {
-                                                debug!(
-                                                    "Text pasted successfully in {:?}",
-                                                    paste_time.elapsed()
-                                                );
-                                                // Leave a newer session's notice alone.
-                                                if owns_ui() {
-                                                    notices::clear(
-                                                        &ah_clone,
-                                                        NoticeSource::Dictation,
-                                                    );
+                                        let (outcome, notice) = if let Some(ref cmd) = action_command {
+                                            match cmd {
+                                                crate::voice_edit::VoiceEditActionKind::SelectAll => {
+                                                    match crate::clipboard::select_all(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Select All: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
                                                 }
-                                                let notice = post_process_failed.then(|| {
-                                                    Notice::new(
-                                                        NoticeCode::PostProcessFailed,
-                                                        NoticeSource::Dictation,
-                                                    )
-                                                });
-                                                (TranscriptionOutcome::Typed, notice)
+                                                crate::voice_edit::VoiceEditActionKind::Copy => {
+                                                    match crate::clipboard::copy_selection(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Copy: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::Cut => {
+                                                    match crate::clipboard::cut_selection(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Cut: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::PasteClipboard => {
+                                                    match crate::clipboard::paste_system_clipboard(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Paste Clipboard: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::SelectAllCopy => {
+                                                    match crate::clipboard::select_all_and_copy(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Select All & Copy: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::SelectAllDelete => {
+                                                    match crate::clipboard::select_all_and_delete(&ah_clone) {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Select All & Delete: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::SelectAllPaste => {
+                                                    let res = crate::clipboard::select_all(&ah_clone).and_then(|_| {
+                                                        std::thread::sleep(Duration::from_millis(40));
+                                                        crate::clipboard::paste_system_clipboard(&ah_clone)
+                                                    });
+                                                    match res {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Select All & Paste: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                crate::voice_edit::VoiceEditActionKind::SelectAllCut => {
+                                                    let res = crate::clipboard::select_all(&ah_clone).and_then(|_| {
+                                                        std::thread::sleep(Duration::from_millis(40));
+                                                        crate::clipboard::cut_selection(&ah_clone)
+                                                    });
+                                                    match res {
+                                                        Ok(()) => (TranscriptionOutcome::Typed, None),
+                                                        Err(e) => {
+                                                            error!("Failed to execute Select All & Cut: {}", e);
+                                                            (
+                                                                TranscriptionOutcome::Failed,
+                                                                Some(Notice::new(NoticeCode::PasteFailed, NoticeSource::Dictation)),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                _ => (TranscriptionOutcome::Typed, None),
                                             }
-                                            Err(e) => {
-                                                error!("Failed to paste transcription: {}", e);
-                                                (
-                                                    TranscriptionOutcome::Failed,
-                                                    Some(Notice::new(
-                                                        NoticeCode::PasteFailed,
-                                                        NoticeSource::Dictation,
-                                                    )),
-                                                )
+                                        } else {
+                                            match utils::paste_or_replace(
+                                                final_text,
+                                                voice_edit_applied,
+                                                ah_clone.clone(),
+                                            ) {
+                                                Ok(()) => {
+                                                    debug!(
+                                                        "Text pasted successfully in {:?}",
+                                                        paste_time.elapsed()
+                                                    );
+                                                    // Leave a newer session's notice alone.
+                                                    if owns_ui() {
+                                                        notices::clear(
+                                                            &ah_clone,
+                                                            NoticeSource::Dictation,
+                                                        );
+                                                    }
+                                                    let notice = post_process_failed.then(|| {
+                                                        Notice::new(
+                                                            NoticeCode::PostProcessFailed,
+                                                            NoticeSource::Dictation,
+                                                        )
+                                                    });
+                                                    (TranscriptionOutcome::Typed, notice)
+                                                }
+                                                Err(e) => {
+                                                    error!("Failed to paste transcription: {}", e);
+                                                    (
+                                                        TranscriptionOutcome::Failed,
+                                                        Some(Notice::new(
+                                                            NoticeCode::PasteFailed,
+                                                            NoticeSource::Dictation,
+                                                        )),
+                                                    )
+                                                }
                                             }
                                         };
                                         match (owns_ui(), notice) {

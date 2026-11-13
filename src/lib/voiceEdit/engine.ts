@@ -1,5 +1,13 @@
 export type VoiceEditActionKind =
   | "undo"
+  | "select_all"
+  | "copy"
+  | "cut"
+  | "paste_clipboard"
+  | "select_all_copy"
+  | "select_all_delete"
+  | "select_all_paste"
+  | "select_all_cut"
   | "remove_target"
   | "replace_target"
   | "replace_range"
@@ -108,7 +116,7 @@ function matchCaseIfCapitalized(original: string, replacement: string): string {
 /**
  * Finds the last word-boundary-aware (or fallback substring) match of `needle` in `haystack`.
  */
-function findLastMatchSpan(
+function findLastMatchSpanInternal(
   haystack: string,
   needle: string,
 ): { start: number; end: number } | null {
@@ -146,6 +154,22 @@ function findLastMatchSpan(
   return null;
 }
 
+function findLastMatchSpan(
+  haystack: string,
+  needle: string,
+): { start: number; end: number } | null {
+  const primary = findLastMatchSpanInternal(haystack, needle);
+  if (primary) return primary;
+  const clean = stripOuterPunctuation(needle);
+  if (/^form$/i.test(clean)) {
+    return findLastMatchSpanInternal(haystack, "from");
+  }
+  if (/^from$/i.test(clean)) {
+    return findLastMatchSpanInternal(haystack, "form");
+  }
+  return null;
+}
+
 function isWordBoundaryMatch(
   haystack: string,
   start: number,
@@ -174,36 +198,49 @@ function findRangeSpan(
   const cleanEnd = stripOuterPunctuation(endPhrase);
   if (!cleanStart || !cleanEnd) return null;
 
-  const lowerHay = haystack.toLowerCase();
-  const lowerStart = cleanStart.toLowerCase();
-  const lowerEnd = cleanEnd.toLowerCase();
+  const tryFind = (startWord: string, endWord: string) => {
+    const lowerHay = haystack.toLowerCase();
+    const lowerStart = startWord.toLowerCase();
+    const lowerEnd = endWord.toLowerCase();
 
-  // Prefer the most recent word-boundary-valid range that has both start and end in order
-  let bestSpan: { start: number; end: number } | null = null;
-  let searchPos = 0;
+    let bestSpan: { start: number; end: number } | null = null;
+    let searchPos = 0;
 
-  while (searchPos < lowerHay.length) {
-    const sIdx = lowerHay.indexOf(lowerStart, searchPos);
-    if (sIdx === -1) break;
+    while (searchPos < lowerHay.length) {
+      const sIdx = lowerHay.indexOf(lowerStart, searchPos);
+      if (sIdx === -1) break;
 
-    const afterStart = sIdx + lowerStart.length;
-    if (isWordBoundaryMatch(haystack, sIdx, afterStart, cleanStart)) {
-      let endSearch = afterStart;
-      while (endSearch < lowerHay.length) {
-        const eIdx = lowerHay.indexOf(lowerEnd, endSearch);
-        if (eIdx === -1) break;
-        const endPos = eIdx + lowerEnd.length;
-        if (isWordBoundaryMatch(haystack, eIdx, endPos, cleanEnd)) {
-          bestSpan = { start: sIdx, end: endPos };
-          break;
+      const afterStart = sIdx + lowerStart.length;
+      if (isWordBoundaryMatch(haystack, sIdx, afterStart, startWord)) {
+        let endSearch = afterStart;
+        while (endSearch < lowerHay.length) {
+          const eIdx = lowerHay.indexOf(lowerEnd, endSearch);
+          if (eIdx === -1) break;
+          const endPos = eIdx + lowerEnd.length;
+          if (isWordBoundaryMatch(haystack, eIdx, endPos, endWord)) {
+            bestSpan = { start: sIdx, end: endPos };
+            break;
+          }
+          endSearch = eIdx + 1;
         }
-        endSearch = eIdx + 1;
       }
+      searchPos = sIdx + 1;
     }
-    searchPos = sIdx + 1;
+    return bestSpan;
+  };
+
+  const primary = tryFind(cleanStart, cleanEnd);
+  if (primary) return primary;
+
+  if (/^form$/i.test(cleanStart)) {
+    const alt = tryFind("from", cleanEnd);
+    if (alt) return alt;
+  } else if (/^from$/i.test(cleanStart)) {
+    const alt = tryFind("form", cleanEnd);
+    if (alt) return alt;
   }
 
-  return bestSpan;
+  return null;
 }
 
 /**
@@ -227,7 +264,97 @@ export function parseVoiceEditCommand(
     };
   }
 
-  // 1. Undo / Scratch That / Clear All
+  // 0. Multi-Action Chained Commands
+  if (
+    /^(?:select\s+all\s+(?:and\s+)?copy(?:\s+that)?|highlight\s+all\s+(?:and\s+)?copy)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "select_all_copy",
+      rawUtterance,
+      summary: "Select all and copy to clipboard",
+    };
+  }
+
+  if (
+    /^(?:select\s+all\s+(?:and\s+)?(?:delete|remove|clear)(?:\s+that)?)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "select_all_delete",
+      rawUtterance,
+      summary: "Select all and delete",
+    };
+  }
+
+  if (
+    /^(?:select\s+all\s+(?:and\s+)?paste(?:\s+(?:that|clipboard))?)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "select_all_paste",
+      rawUtterance,
+      summary: "Select all and paste clipboard",
+    };
+  }
+
+  if (
+    /^(?:select\s+all\s+(?:and\s+)?cut(?:\s+that)?|highlight\s+all\s+(?:and\s+)?cut)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "select_all_cut",
+      rawUtterance,
+      summary: "Select all and cut to clipboard",
+    };
+  }
+
+  // 1. Single Input Actions
+  if (
+    /^(?:select\s+all(?:\s+text)?|select\s+everything|highlight\s+all|highlight\s+everything|choose\s+all)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "select_all",
+      rawUtterance,
+      summary: "Select all text in focused input",
+    };
+  }
+
+  if (/^(?:copy(?:\s+(?:that|this|text|selection))?)$/i.test(lower)) {
+    return {
+      kind: "copy",
+      rawUtterance,
+      summary: "Copy selection to clipboard",
+    };
+  }
+
+  if (/^(?:cut(?:\s+(?:that|this|text|selection))?)$/i.test(lower)) {
+    return {
+      kind: "cut",
+      rawUtterance,
+      summary: "Cut selection to clipboard",
+    };
+  }
+
+  if (
+    /^(?:paste(?:\s+(?:that|this|clipboard|my\s+clipboard|from\s+clipboard))?)$/i.test(
+      lower,
+    )
+  ) {
+    return {
+      kind: "paste_clipboard",
+      rawUtterance,
+      summary: "Paste system clipboard into focused input",
+    };
+  }
+
+  // 2. Undo / Scratch That / Clear All
   if (
     /^(?:undo(?:\s+that|\s+last)?|scratch\s+that|remove\s+all|delete\s+all|clear\s+(?:all|that|everything)|erase\s+(?:all|that))$/i.test(
       lower,
@@ -240,9 +367,9 @@ export function parseVoiceEditCommand(
     };
   }
 
-  // 2. Range Replacement: "replace from <start> to <end> with <replacement>"
+  // 3. Range Replacement: "replace from/form <start> to <end> with <replacement>"
   const rangeReplaceMatch = body.match(
-    /^(?:replace|change|swap)\s+from\s+(.+?)\s+(?:to|through|until|till)\s+(.+?)\s+(?:with|to|by)\s+(.+)$/i,
+    /^(?:replace|change|swap)\s+(?:from|form)\s+(.+?)\s+(?:to|through|until|till)\s+(.+?)\s+(?:with|to|by)\s+(.+)$/i,
   );
   if (rangeReplaceMatch) {
     const target = stripOuterPunctuation(rangeReplaceMatch[1]);
@@ -260,9 +387,9 @@ export function parseVoiceEditCommand(
     }
   }
 
-  // 3. Range Deletion: "delete/remove from <start> to <end>"
+  // 4. Range Deletion: "delete/remove from/form <start> to <end>"
   const rangeDeleteMatch = body.match(
-    /^(?:delete|remove|erase|cut)\s+from\s+(.+?)\s+(?:to|through|until|till)\s+(.+)$/i,
+    /^(?:delete|remove|erase|cut)\s+(?:from|form)\s+(.+?)\s+(?:to|through|until|till)\s+(.+)$/i,
   );
   if (rangeDeleteMatch) {
     const target = stripOuterPunctuation(rangeDeleteMatch[1]);
@@ -278,7 +405,7 @@ export function parseVoiceEditCommand(
     }
   }
 
-  // 4. Targeted Word/Phrase Replacement:
+  // 5. Targeted Word/Phrase Replacement:
   // "replace <target> with/to <replacement>" or "change <target> to/with <replacement>"
   const replaceMatch = body.match(
     /^(?:replace|change|swap|substitute)\s+(?:the\s+(?:word|phrase)\s+)?(.+?)\s+(?:with|to|by|for)\s+(.+)$/i,
@@ -297,7 +424,7 @@ export function parseVoiceEditCommand(
     }
   }
 
-  // 5. Targeted Word/Phrase Deletion:
+  // 6. Targeted Word/Phrase Deletion:
   // "remove <target>" or "delete <target>" or "erase <target>"
   const removeMatch = body.match(
     /^(?:remove|delete|erase|drop)\s+(?:the\s+(?:word|phrase)\s+)?(.+)$/i,
@@ -345,6 +472,38 @@ export function applyVoiceEdit(
     };
   }
 
+  if (
+    command.kind === "select_all" ||
+    command.kind === "copy" ||
+    command.kind === "paste_clipboard" ||
+    command.kind === "select_all_copy" ||
+    command.kind === "select_all_paste"
+  ) {
+    return {
+      matched: true,
+      command,
+      previousText,
+      updatedText: currentText,
+    };
+  }
+
+  if (
+    command.kind === "cut" ||
+    command.kind === "select_all_delete" ||
+    command.kind === "select_all_cut"
+  ) {
+    return {
+      matched: true,
+      command,
+      previousText,
+      updatedText: "",
+      changedSpan: {
+        removed: currentText,
+        inserted: "",
+      },
+    };
+  }
+
   if (command.kind === "undo") {
     const restored = options?.previousSnapshot ?? "";
     return {
@@ -363,7 +522,7 @@ export function applyVoiceEdit(
     const span = findRangeSpan(currentText, command.target, command.rangeEnd);
     if (!span) {
       return {
-        matched: false,
+        matched: true,
         command,
         previousText,
         updatedText: currentText,
@@ -394,7 +553,7 @@ export function applyVoiceEdit(
     const span = findRangeSpan(currentText, command.target, command.rangeEnd);
     if (!span) {
       return {
-        matched: false,
+        matched: true,
         command,
         previousText,
         updatedText: currentText,
@@ -419,7 +578,7 @@ export function applyVoiceEdit(
     const span = findLastMatchSpan(currentText, command.target);
     if (!span) {
       return {
-        matched: false,
+        matched: true,
         command,
         previousText,
         updatedText: currentText,
@@ -450,7 +609,7 @@ export function applyVoiceEdit(
     const span = findLastMatchSpan(currentText, command.target);
     if (!span) {
       return {
-        matched: false,
+        matched: true,
         command,
         previousText,
         updatedText: currentText,
@@ -477,4 +636,76 @@ export function applyVoiceEdit(
     previousText,
     updatedText: currentText,
   };
+}
+
+/**
+ * Analyzes an active spoken transcript or streaming phrase and returns
+ * the corresponding glowing edit tag and active editing mode state.
+ */
+export function getEditModeTag(
+  text: string,
+  customPrefixes?: string[],
+): { isEditMode: boolean; tag: string } | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const cmd = parseVoiceEditCommand(trimmed, customPrefixes);
+  if (cmd.kind === "none") {
+    // Also detect in-progress or partial prefix matches (e.g. while the user is still speaking)
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.startsWith("replace ") ||
+      lower.startsWith("change ") ||
+      lower.startsWith("swap ")
+    ) {
+      return { isEditMode: true, tag: "REPLACE" };
+    }
+    if (lower.startsWith("delete ") || lower.startsWith("remove ")) {
+      return { isEditMode: true, tag: "DELETE" };
+    }
+    if (lower.startsWith("select all")) {
+      return { isEditMode: true, tag: "SELECT ALL" };
+    }
+    if (lower === "copy" || lower.startsWith("copy ")) {
+      return { isEditMode: true, tag: "COPY" };
+    }
+    if (lower === "cut" || lower.startsWith("cut ")) {
+      return { isEditMode: true, tag: "CUT" };
+    }
+    if (lower === "paste" || lower.startsWith("paste ")) {
+      return { isEditMode: true, tag: "PASTE" };
+    }
+    return null;
+  }
+
+  switch (cmd.kind) {
+    case "select_all_copy":
+      return { isEditMode: true, tag: "SELECT ALL & COPY" };
+    case "select_all_delete":
+      return { isEditMode: true, tag: "SELECT ALL & DELETE" };
+    case "select_all_paste":
+      return { isEditMode: true, tag: "SELECT ALL & PASTE" };
+    case "select_all_cut":
+      return { isEditMode: true, tag: "SELECT ALL & CUT" };
+    case "select_all":
+      return { isEditMode: true, tag: "SELECT ALL" };
+    case "copy":
+      return { isEditMode: true, tag: "COPY" };
+    case "cut":
+      return { isEditMode: true, tag: "CUT" };
+    case "paste_clipboard":
+      return { isEditMode: true, tag: "PASTE" };
+    case "replace_range":
+      return { isEditMode: true, tag: "REPLACE RANGE" };
+    case "delete_range":
+      return { isEditMode: true, tag: "DELETE RANGE" };
+    case "replace_target":
+      return { isEditMode: true, tag: "REPLACE" };
+    case "remove_target":
+      return { isEditMode: true, tag: "REMOVE" };
+    case "undo":
+      return { isEditMode: true, tag: "UNDO" };
+    default:
+      return { isEditMode: true, tag: "EDIT" };
+  }
 }

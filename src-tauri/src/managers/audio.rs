@@ -10,6 +10,7 @@ use crate::helpers::clamshell;
 use crate::managers::transcription::StreamRouter;
 use crate::notices::NoticeCode;
 use crate::settings::{get_settings, write_settings, AppSettings, VadBackend};
+use crate::signal_handle;
 use crate::utils;
 use handy_recorder::{Channels, EndReason, ErrorKind, Recorder, RecorderConfig, StartError};
 use log::{debug, error, info, trace, warn};
@@ -1089,13 +1090,34 @@ impl AudioRecordingManager {
             }
 
             let (ready_tx, receiver) = mpsc::channel();
-            let sink = CaptureSink::new(
+            let mut sink = CaptureSink::new(
                 self.lend_vad()?,
                 vad_policy,
                 Arc::clone(&self.on_levels),
                 Arc::clone(&self.on_audio),
                 ready_tx,
             );
+
+            let settings = get_settings(&self.app_handle);
+            if settings.auto_stop_enabled && settings.auto_stop_silence_ms > 0 {
+                let app_handle = self.app_handle.clone();
+                let binding_id_clone = binding_id.to_string();
+                let silence_ms = settings.auto_stop_silence_ms;
+                sink = sink.with_auto_stop(
+                    silence_ms,
+                    Arc::new(move || {
+                        info!(
+                            "Auto-stopping recording for '{}' after {}ms silence",
+                            binding_id_clone, silence_ms
+                        );
+                        signal_handle::send_transcription_input(
+                            &app_handle,
+                            &binding_id_clone,
+                            "AutoSilence",
+                        );
+                    }),
+                );
+            }
 
             let recorder = self.recorder.lock().unwrap();
             let Some(microphone) = recorder.as_ref() else {

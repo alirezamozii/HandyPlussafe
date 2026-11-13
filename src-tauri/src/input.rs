@@ -286,3 +286,83 @@ pub fn send_backspaces(enigo: &mut Enigo, count: usize) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// Sends a Select-All keystroke (Command+A on macOS, Ctrl+A on Windows/Linux).
+pub fn send_select_all(enigo: &mut Enigo) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let modifier = Key::Meta;
+    #[cfg(not(target_os = "macos"))]
+    let modifier = Key::Control;
+
+    enigo
+        .key(modifier, enigo::Direction::Press)
+        .map_err(|e| format!("Failed to press modifier for select-all: {}", e))?;
+    enigo
+        .key(Key::Unicode('a'), enigo::Direction::Click)
+        .map_err(|e| format!("Failed to click 'a' for select-all: {}", e))?;
+    std::thread::sleep(std::time::Duration::from_millis(15));
+    enigo
+        .key(modifier, enigo::Direction::Release)
+        .map_err(|e| format!("Failed to release modifier for select-all: {}", e))?;
+    Ok(())
+}
+
+/// Sends a Copy keystroke (Command+C on macOS, Ctrl+C on Windows/Linux).
+pub fn send_copy(enigo: &mut Enigo) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let modifier = Key::Meta;
+    #[cfg(not(target_os = "macos"))]
+    let modifier = Key::Control;
+
+    enigo
+        .key(modifier, enigo::Direction::Press)
+        .map_err(|e| format!("Failed to press modifier for copy: {}", e))?;
+    enigo
+        .key(Key::Unicode('c'), enigo::Direction::Click)
+        .map_err(|e| format!("Failed to click 'c' for copy: {}", e))?;
+    std::thread::sleep(std::time::Duration::from_millis(15));
+    enigo
+        .key(modifier, enigo::Direction::Release)
+        .map_err(|e| format!("Failed to release modifier for copy: {}", e))?;
+    Ok(())
+}
+
+/// Sends a Cut keystroke (Command+X on macOS, Ctrl+X on Windows/Linux).
+pub fn send_cut(enigo: &mut Enigo) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let modifier = Key::Meta;
+    #[cfg(not(target_os = "macos"))]
+    let modifier = Key::Control;
+
+    enigo
+        .key(modifier, enigo::Direction::Press)
+        .map_err(|e| format!("Failed to press modifier for cut: {}", e))?;
+    enigo
+        .key(Key::Unicode('x'), enigo::Direction::Click)
+        .map_err(|e| format!("Failed to click 'x' for cut: {}", e))?;
+    std::thread::sleep(std::time::Duration::from_millis(15));
+    enigo
+        .key(modifier, enigo::Direction::Release)
+        .map_err(|e| format!("Failed to release modifier for cut: {}", e))?;
+    Ok(())
+}
+
+/// Sends a plain Paste keystroke (Command+V on macOS, Ctrl+V on Windows/Linux).
+pub fn send_paste_clipboard(enigo: &mut Enigo) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let modifier = Key::Meta;
+    #[cfg(not(target_os = "macos"))]
+    let modifier = Key::Control;
+
+    enigo
+        .key(modifier, enigo::Direction::Press)
+        .map_err(|e| format!("Failed to press modifier for paste: {}", e))?;
+    enigo
+        .key(Key::Unicode('v'), enigo::Direction::Click)
+        .map_err(|e| format!("Failed to click 'v' for paste: {}", e))?;
+    std::thread::sleep(std::time::Duration::from_millis(15));
+    enigo
+        .key(modifier, enigo::Direction::Release)
+        .map_err(|e| format!("Failed to release modifier for paste: {}", e))?;
+    Ok(())
+}

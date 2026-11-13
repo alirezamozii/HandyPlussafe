@@ -92,6 +92,13 @@ pub struct CaptureSink {
     ready: Option<mpsc::Sender<()>>,
     samples: Vec<f32>,
     heard_sound: bool,
+    on_auto_stop: Option<Arc<dyn Fn() + Send + Sync + 'static>>,
+    silence_limit_frames: Option<usize>,
+    initial_silence_limit_frames: usize,
+    voiced_frames: usize,
+    trailing_silence_frames: usize,
+    initial_silence_frames: usize,
+    auto_stopped: bool,
 }
 
 /// Spectrum window at 16 kHz: 32 ms, near the overlay's ~30 Hz refresh.
@@ -128,7 +135,34 @@ impl CaptureSink {
             ready: Some(ready),
             samples: Vec::new(),
             heard_sound: false,
+            on_auto_stop: None,
+            silence_limit_frames: None,
+            initial_silence_limit_frames: 0,
+            voiced_frames: 0,
+            trailing_silence_frames: 0,
+            initial_silence_frames: 0,
+            auto_stopped: false,
         }
+    }
+
+    /// Attach an automatic silence-based stop callback. When speech finishes and
+    /// subsequent silence exceeds `silence_timeout_ms`, `on_auto_stop` is invoked once.
+    pub fn with_auto_stop(
+        mut self,
+        silence_timeout_ms: u64,
+        on_auto_stop: Arc<dyn Fn() + Send + Sync + 'static>,
+    ) -> Self {
+        let frame_samples = self.vad.frame_samples();
+        self.silence_limit_frames = Some(crate::audio_toolkit::vad::frames_for_duration_ms(
+            silence_timeout_ms,
+            frame_samples,
+        ));
+        self.initial_silence_limit_frames = crate::audio_toolkit::vad::frames_for_duration_ms(
+            7000,
+            frame_samples,
+        );
+        self.on_auto_stop = Some(on_auto_stop);
+        self
     }
 
     /// The detector, from a sink that never recorded (its start failed).
@@ -188,21 +222,54 @@ impl Sink for CaptureSink {
             (self.on_levels)(levels);
         }
 
-        if self.policy == VadPolicy::Disabled {
+        let is_speech = if self.policy == VadPolicy::Disabled {
             Self::emit(&mut self.samples, &self.on_audio, real);
-            return;
-        }
+            let energy = real.iter().map(|&s| s * s).sum::<f32>() / real.len().max(1) as f32;
+            energy > 0.0003
+        } else {
+            // The detector needs whole frames, so the final chunk goes in with its
+            // zero padding; at most one frame of silence reaches the recording.
+            match self
+                .vad
+                .detector
+                .push_frame(chunk.samples)
+                .unwrap_or(VadFrame::Speech(chunk.samples))
+            {
+                VadFrame::Speech(frame) => {
+                    Self::emit(&mut self.samples, &self.on_audio, frame);
+                    true
+                }
+                VadFrame::Noise => false,
+            }
+        };
 
-        // The detector needs whole frames, so the final chunk goes in with its
-        // zero padding; at most one frame of silence reaches the recording.
-        match self
-            .vad
-            .detector
-            .push_frame(chunk.samples)
-            .unwrap_or(VadFrame::Speech(chunk.samples))
-        {
-            VadFrame::Speech(frame) => Self::emit(&mut self.samples, &self.on_audio, frame),
-            VadFrame::Noise => {}
+        if let Some(silence_limit) = self.silence_limit_frames {
+            if !self.auto_stopped {
+                let min_voiced = crate::audio_toolkit::vad::frames_for_duration_ms(
+                    250,
+                    self.vad.frame_samples(),
+                );
+                if is_speech {
+                    self.voiced_frames += 1;
+                    self.trailing_silence_frames = 0;
+                } else if self.voiced_frames >= min_voiced {
+                    self.trailing_silence_frames += 1;
+                    if self.trailing_silence_frames >= silence_limit {
+                        self.auto_stopped = true;
+                        if let Some(ref cb) = self.on_auto_stop {
+                            cb();
+                        }
+                    }
+                } else {
+                    self.initial_silence_frames += 1;
+                    if self.initial_silence_frames >= self.initial_silence_limit_frames {
+                        self.auto_stopped = true;
+                        if let Some(ref cb) = self.on_auto_stop {
+                            cb();
+                        }
+                    }
+                }
+            }
         }
     }
 }

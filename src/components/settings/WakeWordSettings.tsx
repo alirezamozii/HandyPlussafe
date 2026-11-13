@@ -16,6 +16,7 @@ import Badge from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { SettingContainer } from "../ui/SettingContainer";
+import { Slider } from "../ui/Slider";
 import { Switch } from "../ui/Switch";
 
 interface WakeWordSettingsProps {
@@ -34,10 +35,13 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
 
     const wakeWordEnabled = getSetting("wake_word_enabled") ?? false;
     const voiceEditEnabled = getSetting("voice_edit_enabled") ?? true;
+    const autoStopEnabled = getSetting("auto_stop_enabled") ?? true;
+    const autoStopSilenceMs = getSetting("auto_stop_silence_ms") ?? 1000;
     const wakeWords = getSetting("wake_words") ?? [...DEFAULT_WAKE_WORDS];
     const sanitizedNewWord = sanitizeWakeWordInput(newWakeWord);
     const isToggleUpdating = isUpdating("wake_word_enabled");
     const isVoiceEditUpdating = isUpdating("voice_edit_enabled");
+    const isAutoStopUpdating = isUpdating("auto_stop_enabled");
     const isListUpdating = isUpdating("wake_words");
 
     const handleToggleWakeWord = (enabled: boolean) => {
@@ -46,6 +50,14 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
 
     const handleToggleVoiceEdit = (enabled: boolean) => {
       updateSetting("voice_edit_enabled", enabled);
+    };
+
+    const handleToggleAutoStop = (enabled: boolean) => {
+      updateSetting("auto_stop_enabled", enabled);
+    };
+
+    const handleChangeSilence = (ms: number) => {
+      updateSetting("auto_stop_silence_ms", Math.round(ms));
     };
 
     const handleAddWakeWord = () => {
@@ -236,6 +248,65 @@ export const WakeWordSettings: React.FC<WakeWordSettingsProps> = React.memo(
             ariaLabel={t("settings.general.wakeWord.voiceEdit.title")}
           />
         </SettingContainer>
+
+        <SettingContainer
+          title={t("settings.general.wakeWord.autoStop.title")}
+          description={t("settings.general.wakeWord.autoStop.description")}
+          descriptionMode={descriptionMode}
+          grouped={grouped}
+        >
+          <Switch
+            checked={autoStopEnabled}
+            onChange={handleToggleAutoStop}
+            disabled={isAutoStopUpdating}
+            ariaLabel={t("settings.general.wakeWord.autoStop.title")}
+          />
+        </SettingContainer>
+
+        {autoStopEnabled && (
+          <div className="space-y-2">
+            <Slider
+              value={autoStopSilenceMs}
+              onChange={handleChangeSilence}
+              min={400}
+              max={3000}
+              step={100}
+              label={t("settings.general.wakeWord.silence.title")}
+              description={t("settings.general.wakeWord.silence.description")}
+              descriptionMode={descriptionMode}
+              grouped={grouped}
+              formatValue={(val) => `${val}ms`}
+              onReset={() => updateSetting("auto_stop_silence_ms", 1000)}
+            />
+            <div
+              className={`px-4 py-2 ${grouped ? "" : "rounded-lg border border-line"} flex flex-wrap items-center justify-between gap-2 text-xs text-text-subtle`}
+            >
+              <span className="font-medium">
+                {t("settings.general.wakeWord.silence.presets")}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "700ms", val: 700 },
+                  { label: "1000ms (Default)", val: 1000 },
+                  { label: "1500ms", val: 1500 },
+                  { label: "2000ms", val: 2000 },
+                ].map((preset) => (
+                  <Button
+                    key={preset.val}
+                    onClick={() => handleChangeSilence(preset.val)}
+                    variant={
+                      autoStopSilenceMs === preset.val ? "primary" : "secondary"
+                    }
+                    size="sm"
+                    className="text-[11px] px-2 py-0.5 cursor-pointer"
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   },

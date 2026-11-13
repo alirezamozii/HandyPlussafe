@@ -47,7 +47,7 @@
   z-index: 50;
   pointer-events: none;
   box-sizing: border-box;
-  padding: 14px;
+  padding: 10px 14px;
   display: flex;
   justify-content: center; /* horizontal centering, kept for both forms */
   align-items: flex-end; /* bottom placement: flush to the bottom edge */
@@ -100,7 +100,7 @@
   margin: 0;
 }
 
-/* Shared base card. Flat: theme surface + hairline border, no shadow or blur. */
+/* Shared base card. Theme surface + prominent stroke and glow. */
 .scard {
   box-sizing: border-box;
   width: var(--ov-pill-w);
@@ -114,17 +114,75 @@
   flex: none; /* hold our own width; never let the stage flex shrink the card */
   transform-origin: bottom center;
   background: var(--s-surface);
-  border: 1.5px solid color-mix(in srgb, var(--s-accent) 82%, var(--s-border));
+  border: 2px solid color-mix(in srgb, var(--s-accent) 92%, var(--s-border));
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.72),
-    0 0 14px color-mix(in srgb, var(--s-accent) 28%, transparent);
+    0 0 16px color-mix(in srgb, var(--s-accent) 36%, transparent);
   pointer-events: auto;
   /* pop-in plays on mount; morph (width/radius) is a transition */
   animation: scard-pop 460ms cubic-bezier(0.22, 1, 0.36, 1);
   transition:
     width 460ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 460ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 220ms ease,
+    box-shadow 260ms ease;
   will-change: transform, width, opacity;
+}
+
+/* Editing Mode: Electric Purple Theme & Glow */
+.scard.editing-mode {
+  --s-accent: #c084fc;
+  --s-accent-soft: rgba(192, 132, 252, 0.25);
+  border-color: #c084fc;
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.78),
+    0 0 18px rgba(192, 132, 252, 0.65),
+    0 0 34px rgba(168, 85, 247, 0.4);
+}
+
+.scard.editing-mode .sdot.ready {
+  background: #c084fc;
+  box-shadow: 0 0 10px #c084fc;
+}
+
+.scard.editing-mode .swave i {
+  background: #c084fc;
+}
+
+.scard.editing-mode .scaret {
+  background: #c084fc;
+  box-shadow: 0 0 8px #c084fc;
+}
+
+/* Glowing Mode Badge Tag inside pill */
+.sedit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: rgba(192, 132, 252, 0.18);
+  border: 1px solid rgba(192, 132, 252, 0.7);
+  color: #f5f3ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.5);
+  animation: sedit-badge-pop 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  line-height: 1.4;
+}
+
+@keyframes sedit-badge-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes scard-pop {
   from {
@@ -163,6 +221,9 @@
 .scard.compact {
   animation: none;
   width: var(--ov-rest-w);
+}
+.scard.compact.editing-mode {
+  width: 224px;
 }
 .scard.compact.cworking {
   width: var(--ov-work-w);
